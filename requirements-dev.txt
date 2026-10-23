@@ -1,0 +1,4 @@
+-e .[dev]
+-e ../RcbCompareTool
+-e ../RcbClubdeskExport
+-e ../RcbEfaExport

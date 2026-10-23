@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "RcbMemberSync"
+version = "0.1.0"
+description = "Bedienoberfläche (marimo) für Export und Abgleich der Mitgliederdaten zwischen ClubDesk und efa"
+authors = [
+    { name = "Beat Pauli" }
+]
+requires-python = ">=3.11"
+
+# Die drei Fachbibliotheken (RcbCompareTool, RcbClubdeskExport, RcbEfaExport)
+# werden lokal editierbar über requirements-dev.txt installiert.
+dependencies = [
+    "marimo>=0.9",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["rcbmembersync*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

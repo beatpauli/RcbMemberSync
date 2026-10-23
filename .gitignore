@@ -1,0 +1,32 @@
+# Virtual Environment
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# IDE
+.idea/
+.vscode/
+
+# Environment
+.env
+
+# Test
+.pytest_cache/
+
+# marimo
+__marimo__/
+
+# Daten und Ausgaben (Mitgliederdaten nie einchecken)
+data/
+output/
+*.csv
+!tests/fixtures/**/*.csv
+
+# Claude
+settings.local.json
