@@ -10,7 +10,8 @@ build/
 dist/
 
 # IDE
-.idea/
+.idea/*
+!.idea/runConfigurations/
 .vscode/
 
 # Environment
