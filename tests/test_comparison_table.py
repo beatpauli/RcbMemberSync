@@ -37,32 +37,27 @@ def test_one_row_per_person():
     assert sorted(row.change.last_name for row in table.rows) == ["Alt", "Austritt", "Muster", "Neu", "Probe"]
 
 
-def test_rows_sorted_changed_new_left():
+def test_rows_sorted_by_case_then_last_and_first_name():
 
-    def _change(change_type, external_id):
-        return PersonChange(change_type, f"e-{external_id}", external_id, "X", "Y", {}, [])
+    def _change(change_type, external_id, last_name, first_name):
+        return PersonChange(change_type, f"e-{external_id}", external_id, last_name, first_name, {}, [])
 
-    # Comparator-Reihenfolge: nach ExternalId, Fälle gemischt
+    # Comparator-Reihenfolge: nach ExternalId, Fälle und Namen gemischt
     changes = [
-        _change(ChangeType.LEFT, "1"),
-        _change(ChangeType.NEW, "2"),
-        _change(ChangeType.CHANGED, "3"),
-        _change(ChangeType.NEW, "4"),
-        _change(ChangeType.CHANGED, "5"),
-        _change(ChangeType.LEFT, "6"),
+        _change(ChangeType.LEFT, "1", "Zahn", "Eva"),
+        _change(ChangeType.NEW, "2", "Meier", "Urs"),
+        _change(ChangeType.CHANGED, "3", "meier", "Anna"),   # Gross-/Kleinschreibung egal
+        _change(ChangeType.NEW, "4", "Bühler", "Max"),
+        _change(ChangeType.NEW, "8", "Burri", "Ida"),        # ü wie u: Bühler vor Burri
+        _change(ChangeType.CHANGED, "5", "Arnold", "Tim"),
+        _change(ChangeType.LEFT, "6", "Arnold", "Lea"),
+        _change(ChangeType.CHANGED, "7", "Meier", "Ben"),
     ]
     efa_rows = {f"e-{c.external_id}": {} for c in changes}
 
     table = build_table(ComparisonData(ComparisonResult(changes=changes), efa_rows, set()))
 
-    assert [(row.change.change_type, row.change.external_id) for row in table.rows] == [
-        (ChangeType.CHANGED, "3"),
-        (ChangeType.CHANGED, "5"),
-        (ChangeType.NEW, "2"),
-        (ChangeType.NEW, "4"),
-        (ChangeType.LEFT, "1"),
-        (ChangeType.LEFT, "6"),
-    ]
+    assert [row.change.external_id for row in table.rows] == ["5", "3", "7", "4", "8", "2", "6", "1"]
 
 
 def test_changed_person_shows_both_values_of_difference():
