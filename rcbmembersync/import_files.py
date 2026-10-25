@@ -1,7 +1,7 @@
 """
 import_files.py
 
-Laufverzeichnis und efaCLI-Importdateien je Person (siehe docs/import-plan.md).
+efaCLI-Importdateien je Person (siehe docs/import-plan.md).
 
 - Geänderte Person: Spalten Id + alle geänderten Attribute (Teil-Update)
 - Neue Person: alle gepflegten Spalten ausser InvalidFrom, mit der vom
@@ -13,12 +13,9 @@ Laufverzeichnis und efaCLI-Importdateien je Person (siehe docs/import-plan.md).
 import csv
 import re
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 
 from rcbcomparetool.comparator import UPDATES_FILE_HEADER, ChangeType, ComparisonResult, PersonChange
-from rcbcomparetool.mapper import timestamp_prefix
-from rcbefaexport.config import Instance
 from rcbefaexport.persons import ImportMode
 
 
@@ -39,28 +36,6 @@ class ImportFile:
     path: Path
     change: PersonChange
     mode: ImportMode
-
-
-def create_run_dir(base_dir: Path, instance: Instance, now: datetime | None = None) -> Path:
-    """
-    Legt das Laufverzeichnis <base_dir>/<YYYY-MM-DD_HHMM>[_LOKAL] an.
-
-    Gibt es das Verzeichnis schon (zweiter Lauf in derselben Minute), wird
-    ein Zähler angehängt.
-    """
-
-    name = timestamp_prefix(now)
-    if instance is Instance.LOCAL:
-        name += "_LOKAL"
-
-    run_dir = base_dir / name
-    counter = 2
-    while run_dir.exists():
-        run_dir = base_dir / f"{name}_{counter}"
-        counter += 1
-
-    run_dir.mkdir(parents=True)
-    return run_dir
 
 
 def import_file_name(change: PersonChange) -> str:

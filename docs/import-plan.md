@@ -236,6 +236,13 @@ versioniert).
       (`create_run_dir`), Importdatei je Person (`write_import_files`),
       Liste der Austritte (`leavers`). Dateinamen ohne Leerzeichen und ohne
       unter Windows unzulässige Zeichen (`\/:*?"<>|`), Umlaute bleiben.
-- [ ] RcbMemberSync: GUI – Instanzauswahl, Laufverzeichnis, Auswahl je
-      Person, Austrittsliste, Freigabe, Einspielen, Kontrolle, Log
+- [x] RcbMemberSync GUI Teil 1: Instanzauswahl (Wechsel verwirft die
+      efa-Datei und beginnt einen neuen Lauf), Laufverzeichnis beim ersten
+      Export, Exporte landen als `efa_vorher.csv` / `clubdesk.csv` darin
+      (`run.py`). Von Hand gewählte Dateien und `vergleich.csv` werden erst
+      bei der Freigabe abgelegt (`store_inputs`), weil Dateien nur hinter
+      einem Button geschrieben werden.
+- [ ] GUI Teil 2: Auswahl je Person, Austrittsliste
+- [ ] GUI Teil 3: Freigabe, Einspielen, `efacli.log`
+- [ ] GUI Teil 4: Kontrolle (Export + Vergleich danach)
 - [ ] RcbMemberSync: `assign-ids` als Kommandozeile + Run-Configs

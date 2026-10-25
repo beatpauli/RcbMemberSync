@@ -1,21 +1,14 @@
-from datetime import datetime
-
 from rcbcomparetool.comparator import ChangeType, FieldChange, PersonChange
-from rcbefaexport.config import Instance
 from rcbefaexport.persons import ImportMode
 
 from rcbmembersync.import_files import (
     NEW_PERSON_HEADER,
-    create_run_dir,
     import_file_name,
     leavers,
     write_import_files,
 )
 from rcbmembersync.runners import compare_files
 from rcbmembersync.settings import DEMO_DIR
-
-
-NOW = datetime(2026, 10, 25, 14, 30)
 
 
 def _demo_result():
@@ -36,24 +29,6 @@ def _change(change_type=ChangeType.CHANGED, last_name="Muster", first_name="Max"
 
 def _read(path):
     return path.read_bytes().decode("utf-8")
-
-
-def test_create_run_dir_productive(tmp_path):
-
-    assert create_run_dir(tmp_path, Instance.REMOTE, NOW) == tmp_path / "2026-10-25_1430"
-    assert (tmp_path / "2026-10-25_1430").is_dir()
-
-
-def test_create_run_dir_local_is_marked(tmp_path):
-
-    assert create_run_dir(tmp_path, Instance.LOCAL, NOW).name == "2026-10-25_1430_LOKAL"
-
-
-def test_create_run_dir_same_minute_gets_counter(tmp_path):
-
-    create_run_dir(tmp_path, Instance.REMOTE, NOW)
-
-    assert create_run_dir(tmp_path, Instance.REMOTE, NOW).name == "2026-10-25_1430_2"
 
 
 def test_import_file_name_removes_spaces_and_keeps_umlauts():

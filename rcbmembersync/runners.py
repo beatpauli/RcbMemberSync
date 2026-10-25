@@ -15,23 +15,28 @@ from rcbcomparetool.clubdesk import ClubDeskReader
 from rcbcomparetool.comparator import ComparisonResult, Comparator
 from rcbcomparetool.efa import EfaReader
 
-from .settings import DATA_DIR, project_dir
+from rcbefaexport.config import Instance
+
+from .run import CLUBDESK_NAME, EFA_BEFORE_NAME, adopt_file
+from .settings import project_dir
 
 
-def export_efa() -> Path:
+def export_efa(instance: Instance, run_dir: Path) -> Path:
     """
-    Exportiert die efa-Personen über RcbEfaExport (VPN + efaCLI, nur lesend).
+    Exportiert die efa-Personen über RcbEfaExport (efaCLI, nur lesend) und
+    verschiebt die Datei als efa_vorher.csv ins Laufverzeichnis.
 
-    Die Konfiguration kommt aus der .env von RcbEfaExport (dort beim Import
-    von rcbefaexport.config geladen).
+    VPN nur für die produktive Instanz. Die Konfiguration kommt aus der .env
+    von RcbEfaExport (dort beim Import von rcbefaexport.config geladen).
     """
 
     from rcbefaexport import EfaClient
     from rcbefaexport.config import Config
 
-    # vorerst immer die produktive Instanz (Standard von from_env)
-    with EfaClient(Config.from_env()) as efa:
-        return efa.persons.export()
+    with EfaClient(Config.from_env(instance)) as efa:
+        exported = efa.persons.export()
+
+    return adopt_file(exported, run_dir, EFA_BEFORE_NAME, move=True)
 
 
 def _export_clubdesk(download_dir: Path) -> Path:
@@ -59,16 +64,19 @@ def _export_clubdesk(download_dir: Path) -> Path:
         return contacts.export_csv()
 
 
-def export_clubdesk(download_dir: Path = DATA_DIR / "clubdesk") -> Path:
+def export_clubdesk(run_dir: Path) -> Path:
     """
-    Exportiert die ClubDesk-Mitglieder über RcbClubdeskExport nach download_dir.
+    Exportiert die ClubDesk-Mitglieder über RcbClubdeskExport als
+    clubdesk.csv ins Laufverzeichnis.
 
     Läuft in einem eigenen Thread: marimo-Zellen laufen in einer
     asyncio-Schleife, darin verweigert die Playwright-Sync-API den Start.
     """
 
     with ThreadPoolExecutor(max_workers=1) as executor:
-        return executor.submit(_export_clubdesk, download_dir).result()
+        exported = executor.submit(_export_clubdesk, run_dir).result()
+
+    return adopt_file(exported, run_dir, CLUBDESK_NAME, move=True)
 
 
 @dataclass

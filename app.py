@@ -10,17 +10,23 @@ def _():
 
     import marimo as mo
 
+    from rcbefaexport.config import Instance
+
     from rcbmembersync.comparison_table import SOURCE_EFA, build_table
+    from rcbmembersync.run import create_run_dir
     from rcbmembersync.runners import compare_files, export_clubdesk, export_efa
-    from rcbmembersync.settings import BASE_DIR, DEMO_DIR, check_environment
+    from rcbmembersync.settings import BASE_DIR, DEMO_DIR, OUTPUT_DIR, check_environment
     return (
         BASE_DIR,
         DEMO_DIR,
+        Instance,
+        OUTPUT_DIR,
         Path,
         SOURCE_EFA,
         build_table,
         check_environment,
         compare_files,
+        create_run_dir,
         export_clubdesk,
         export_efa,
         mo,
@@ -35,24 +41,39 @@ def _(mo):
     get_clubdesk_path, set_clubdesk_path = mo.state("")
     get_efa_message, set_efa_message = mo.state(None)
     get_clubdesk_message, set_clubdesk_message = mo.state(None)
+
+    # Laufverzeichnis output/<Zeitstempel>[_LOKAL]; beim ersten Export angelegt
+    get_run_dir, set_run_dir = mo.state(None)
     return (
         get_clubdesk_message,
         get_clubdesk_path,
         get_efa_message,
         get_efa_path,
+        get_run_dir,
         set_clubdesk_message,
         set_clubdesk_path,
         set_efa_message,
         set_efa_path,
+        set_run_dir,
     )
 
 
 @app.cell
-def _(check_environment, mo):
+def _(Instance, check_environment, mo):
     checks = check_environment()
     all_ok = all(check.ok for check in checks)
 
     demo_button = mo.ui.run_button(label="Demodaten laden", kind="neutral")
+
+    instance_select = mo.ui.radio(
+        options={
+            "produktiv": Instance.REMOTE,
+            "lokale Testinstanz (ohne VPN)": Instance.LOCAL,
+        },
+        value="produktiv",
+        inline=True,
+        label="**efa-Instanz**",
+    )
 
     mo.vstack(
         [
@@ -67,6 +88,7 @@ def _(check_environment, mo):
                     ),
                 }
             ),
+            instance_select,
             mo.hstack(
                 [demo_button, mo.md("_Erfundene Testdaten statt echter Exporte (Prototyp)_")],
                 justify="start",
@@ -74,7 +96,32 @@ def _(check_environment, mo):
             ),
         ]
     )
-    return (demo_button,)
+    return demo_button, instance_select
+
+
+@app.cell
+def _(instance_select, set_efa_message, set_efa_path, set_run_dir):
+    # Neue Instanz → neuer Lauf. Die efa-Datei gehört zur alten Instanz und
+    # wird verworfen; die ClubDesk-Datei bleibt gültig.
+    instance = instance_select.value
+
+    set_run_dir(None)
+    set_efa_path("")
+    set_efa_message(None)
+    return (instance,)
+
+
+@app.cell
+def _(get_run_dir, instance, mo):
+    _run_dir = get_run_dir()
+
+    mo.md(
+        f"Laufverzeichnis: `{_run_dir}`"
+        if _run_dir
+        else "Laufverzeichnis: _wird beim ersten Export angelegt_"
+        + (" _(markiert mit `_LOKAL`)_" if instance.value == "local" else "")
+    )
+    return
 
 
 @app.cell
@@ -130,14 +177,35 @@ def _(get_clubdesk_path, get_efa_path, mo, set_clubdesk_path, set_efa_path):
 
 
 @app.cell
-def _(efa_export_button, export_efa, mo, set_efa_message, set_efa_path):
+def _(OUTPUT_DIR, create_run_dir, get_run_dir, instance, set_run_dir):
+    def ensure_run_dir():
+        """Laufverzeichnis des aktuellen Laufs, beim ersten Aufruf angelegt."""
+        run_dir = get_run_dir()
+        if run_dir is None:
+            run_dir = create_run_dir(OUTPUT_DIR, instance)
+            set_run_dir(run_dir)
+        return run_dir
+    return (ensure_run_dir,)
+
+
+@app.cell
+def _(
+    efa_export_button,
+    ensure_run_dir,
+    export_efa,
+    instance,
+    mo,
+    set_efa_message,
+    set_efa_path,
+):
     mo.stop(not efa_export_button.value)
 
+    _title = "efa-Export läuft (VPN, efaCLI) …" if instance.value == "remote" else "efa-Export läuft (lokale Testinstanz) …"
     try:
-        with mo.status.spinner(title="efa-Export läuft (VPN, efaCLI) …"):
-            _file = export_efa()
+        with mo.status.spinner(title=_title):
+            _file = export_efa(instance, ensure_run_dir())
         set_efa_path(str(_file))
-        set_efa_message(("success", "Export erstellt."))
+        set_efa_message(("success", f"Export erstellt: {_file.name}"))
     except Exception as _e:
         set_efa_message(("danger", f"Export fehlgeschlagen: {_e}"))
     return
@@ -146,6 +214,7 @@ def _(efa_export_button, export_efa, mo, set_efa_message, set_efa_path):
 @app.cell
 def _(
     clubdesk_export_button,
+    ensure_run_dir,
     export_clubdesk,
     mo,
     set_clubdesk_message,
@@ -155,9 +224,9 @@ def _(
 
     try:
         with mo.status.spinner(title="ClubDesk-Export läuft …"):
-            _file = export_clubdesk()
+            _file = export_clubdesk(ensure_run_dir())
         set_clubdesk_path(str(_file))
-        set_clubdesk_message(("success", "Export erstellt."))
+        set_clubdesk_message(("success", f"Export erstellt: {_file.name}"))
     except Exception as _e:
         set_clubdesk_message(("danger", f"Export fehlgeschlagen: {_e}"))
     return
