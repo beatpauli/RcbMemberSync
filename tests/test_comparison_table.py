@@ -37,6 +37,34 @@ def test_one_row_per_person():
     assert sorted(row.change.last_name for row in table.rows) == ["Alt", "Austritt", "Muster", "Neu", "Probe"]
 
 
+def test_rows_sorted_changed_new_left():
+
+    def _change(change_type, external_id):
+        return PersonChange(change_type, f"e-{external_id}", external_id, "X", "Y", {}, [])
+
+    # Comparator-Reihenfolge: nach ExternalId, Fälle gemischt
+    changes = [
+        _change(ChangeType.LEFT, "1"),
+        _change(ChangeType.NEW, "2"),
+        _change(ChangeType.CHANGED, "3"),
+        _change(ChangeType.NEW, "4"),
+        _change(ChangeType.CHANGED, "5"),
+        _change(ChangeType.LEFT, "6"),
+    ]
+    efa_rows = {f"e-{c.external_id}": {} for c in changes}
+
+    table = build_table(ComparisonData(ComparisonResult(changes=changes), efa_rows, set()))
+
+    assert [(row.change.change_type, row.change.external_id) for row in table.rows] == [
+        (ChangeType.CHANGED, "3"),
+        (ChangeType.CHANGED, "5"),
+        (ChangeType.NEW, "2"),
+        (ChangeType.NEW, "4"),
+        (ChangeType.LEFT, "1"),
+        (ChangeType.LEFT, "6"),
+    ]
+
+
 def test_changed_person_shows_both_values_of_difference():
 
     row = _row(_demo_table(), "Muster")

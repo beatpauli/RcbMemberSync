@@ -48,6 +48,10 @@ CASE_LABELS = {
 
 TRANSFER_IMPORT = "Import"
 
+# Reihenfolge der Fälle in der Tabelle; innerhalb eines Falls bleibt die
+# Reihenfolge des Comparators (nach ExternalId)
+CASE_ORDER = (ChangeType.CHANGED, ChangeType.NEW, ChangeType.LEFT)
+
 
 @dataclass
 class TableRow:
@@ -109,11 +113,14 @@ def build_table(data: ComparisonData) -> ComparisonTable:
       in efa zu ändern ist
     - Neu: nur ClubDesk-Werte; ausgetreten ohne ClubDesk-Datensatz: nur
       efa-Werte, die Abweichung zeigt das neue „Ungültig ab“
+    - Sortiert nach Fall: geändert, neu, ausgetreten (CASE_ORDER)
     """
 
     table = ComparisonTable()
 
-    for change in data.result.changes:
+    changes = sorted(data.result.changes, key=lambda change: CASE_ORDER.index(change.change_type))
+
+    for change in changes:
 
         efa_row = data.efa_rows.get(change.efa_id) if change.change_type is not ChangeType.NEW else None
         in_clubdesk = change.change_type is ChangeType.NEW or change.external_id in data.clubdesk_ids
