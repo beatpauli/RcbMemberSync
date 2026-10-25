@@ -106,10 +106,11 @@ def _case_counts(changes: list[PersonChange]) -> str:
     return f"{len(changes)} Personen ({new} neu, {changed} geändert)"
 
 
-def import_all(files: list[ImportFile], persons: Any, log_path: Path, header: list[str]) -> list[ImportOutcome]:
+def import_all(files: list[ImportFile], efa: Any, log_path: Path, header: list[str]) -> list[ImportOutcome]:
     """
-    Importiert jede Datei einzeln über persons.import_file und protokolliert
-    jeden Aufruf. Fehler einer Person brechen den Lauf nicht ab.
+    Importiert jede Datei einzeln über efa.persons.import_file und protokolliert
+    jeden an efaCLI gesendeten Befehl sowie das Ergebnis je Datei. Fehler einer
+    Person brechen den Lauf nicht ab.
 
     Das Log wird exklusiv angelegt (FileExistsError, falls es schon existiert)
     und nach jeder Zeile geschrieben, damit es auch bei einem Absturz den
@@ -127,15 +128,21 @@ def import_all(files: list[ImportFile], persons: Any, log_path: Path, header: li
         for line in header:
             write(line)
 
-        for file in files:
-            try:
-                outcome = ImportOutcome(file, records=persons.import_file(file.path, file.mode))
-            except Exception as e:
-                outcome = ImportOutcome(file, error=f"{type(e).__name__}: {e}")
+        # Befehle, die die Sitzung nach dem Schliessen des Logs sendet
+        # (z.B. quit), werden nicht mehr protokolliert
+        efa.on_command = lambda command: write(f">>> {command}")
+        try:
+            for file in files:
+                try:
+                    outcome = ImportOutcome(file, records=efa.persons.import_file(file.path, file.mode))
+                except Exception as e:
+                    outcome = ImportOutcome(file, error=f"{type(e).__name__}: {e}")
 
-            outcomes.append(outcome)
-            status = "ok     " if outcome.ok else "FEHLER "
-            write(f"{status} import -impmode={file.mode} {file.path.name}: {outcome.message}")
+                outcomes.append(outcome)
+                status = "ok     " if outcome.ok else "FEHLER "
+                write(f"{status} {file.path.name} ({file.mode}): {outcome.message}")
+        finally:
+            efa.on_command = None
 
         failed = sum(1 for outcome in outcomes if not outcome.ok)
         write(f"Ende: {len(outcomes) - failed} ok, {failed} fehlgeschlagen")
@@ -181,6 +188,6 @@ def apply_changes(
     ]
 
     with client_factory(instance) as efa:
-        apply_result.outcomes = import_all(files, efa.persons, run_dir / EFACLI_LOG_NAME, header)
+        apply_result.outcomes = import_all(files, efa, run_dir / EFACLI_LOG_NAME, header)
 
     return apply_result

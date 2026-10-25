@@ -31,16 +31,39 @@ def _read(path):
     return path.read_bytes().decode("utf-8")
 
 
-def test_import_file_name_removes_spaces_and_keeps_umlauts():
+def test_import_file_name_removes_spaces():
 
-    change = _change(last_name="von Allmen", first_name="Jürg Peter")
+    change = _change(last_name="von Allmen", first_name="Hans Peter")
 
-    assert import_file_name(change) == "1001_vonAllmen_JürgPeter.csv"
+    assert import_file_name(change) == "1001_vonAllmen_HansPeter.csv"
 
 
-def test_import_file_name_removes_characters_invalid_on_windows():
+def test_import_file_name_replaces_umlauts():
+
+    change = _change(last_name="Bühler-Österle", first_name="Jürg Käthi Strauß")
+
+    assert import_file_name(change) == "1001_Buehler-Oesterle_JuergKaethiStrauss.csv"
+
+
+def test_import_file_name_removes_accents():
+
+    change = _change(last_name="Façade Ñúñez", first_name="Renée Hélène Jérôme Loïc Àèìòù Øyvind")
+
+    assert import_file_name(change) == "1001_FacadeNunez_ReneeHeleneJeromeLoicAeiouOyvind.csv"
+
+
+def test_import_file_name_handles_decomposed_umlauts():
+
+    # macOS / manche Exporte: ü als u + kombinierendes Trema
+    change = _change(first_name="Jürg")
+
+    assert import_file_name(change) == "1001_Muster_Juerg.csv"
+
+
+def test_import_file_name_removes_other_characters():
 
     assert import_file_name(_change(last_name='A/B:C"D')) == "1001_ABCD_Max.csv"
+    assert import_file_name(_change(last_name="D'Amico")) == "1001_DAmico_Max.csv"
 
 
 def test_changed_person_file_contains_id_and_changed_attributes(tmp_path):

@@ -12,6 +12,7 @@ efaCLI-Importdateien je Person (siehe docs/import-plan.md).
 
 import csv
 import re
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,8 +28,18 @@ NOT_IMPORTABLE = {"InvalidFrom"}
 
 NEW_PERSON_HEADER = tuple(column for column in UPDATES_FILE_HEADER if column not in NOT_IMPORTABLE)
 
-# Zeichen, die in Windows-Dateinamen nicht erlaubt sind, plus Leerzeichen
-_FILENAME_REMOVE = re.compile(r'[\s\\/:*?"<>|]')
+# efaCLI findet Importdateien mit Sonderzeichen im Namen nicht: Umlaute werden
+# umschrieben, andere Buchstaben verlieren ihren Akzent (é → e), was danach
+# nicht ASCII-Buchstabe, Ziffer oder Bindestrich ist, fällt weg
+_FILENAME_REPLACE = str.maketrans({
+    "ä": "ae", "ö": "oe", "ü": "ue",
+    "Ä": "Ae", "Ö": "Oe", "Ü": "Ue",
+    "ß": "ss",
+    # ohne Zerlegung in Buchstabe + Akzent
+    "æ": "ae", "Æ": "Ae", "œ": "oe", "Œ": "Oe",
+    "ø": "o", "Ø": "O", "ł": "l", "Ł": "L", "đ": "d", "Đ": "D",
+})
+_FILENAME_REMOVE = re.compile(r"[^A-Za-z0-9-]")
 
 
 @dataclass(frozen=True)
@@ -38,11 +49,18 @@ class ImportFile:
     mode: ImportMode
 
 
+def _file_name_part(text: str) -> str:
+
+    text = unicodedata.normalize("NFC", text).translate(_FILENAME_REPLACE)
+    text = "".join(c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c))
+    return _FILENAME_REMOVE.sub("", text)
+
+
 def import_file_name(change: PersonChange) -> str:
-    """<ExternalId>_<LastName>_<FirstName>.csv, ohne Leerzeichen, Umlaute bleiben."""
+    """<ExternalId>_<LastName>_<FirstName>.csv, nur ASCII (Jürg → Juerg, René → Rene)."""
 
     parts = (change.external_id, change.last_name, change.first_name)
-    return "_".join(_FILENAME_REMOVE.sub("", part) for part in parts) + ".csv"
+    return "_".join(_file_name_part(part) for part in parts) + ".csv"
 
 
 def import_row(change: PersonChange) -> dict[str, str] | None:

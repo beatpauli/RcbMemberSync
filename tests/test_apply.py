@@ -17,9 +17,14 @@ class FakePersons:
     def __init__(self, results=None):
         self.results = results or {}   # Dateiname -> Anzahl oder Exception
         self.calls = []
+        self.client = None
 
     def import_file(self, filename, mode):
         self.calls.append((filename.name, mode))
+        # wie der echte Client: jeder gesendete Befehl geht an on_command
+        for command in ("persons", f"import -impmode={mode} {filename}"):
+            if self.client.on_command is not None:
+                self.client.on_command(command)
         result = self.results.get(filename.name, 1)
         if isinstance(result, Exception):
             raise result
@@ -30,8 +35,10 @@ class FakeClient:
 
     def __init__(self, persons, fail_on_enter=None):
         self.persons = persons
+        persons.client = self
         self.fail_on_enter = fail_on_enter
         self.instances = []
+        self.on_command = None
 
     def __call__(self, instance):
         self.instances.append(instance)
@@ -99,10 +106,25 @@ def test_failures_do_not_stop_the_others_and_are_logged(inputs):
 
     log = (run_dir / EFACLI_LOG_NAME).read_text(encoding="utf-8")
     assert "Instanz: lokale Testinstanz" in log
-    assert "FEHLER  import -impmode=update 1001_Muster_Max.csv: 0 Datensätze importiert" in log
+    assert "FEHLER  1001_Muster_Max.csv (update): 0 Datensätze importiert" in log
     assert "RuntimeError: efaCLI hat keine Importmeldung ausgegeben" in log
-    assert "ok      import -impmode=addupdate 1004_Neu_Laura.csv" in log
+    assert "ok      1004_Neu_Laura.csv (addupdate)" in log
     assert "Ende: 1 ok, 2 fehlgeschlagen" in log
+
+
+def test_commands_sent_to_efacli_are_logged(inputs):
+
+    run_dir, efa_file, clubdesk_file, data = inputs
+    client = FakeClient(FakePersons())
+
+    apply_changes(Instance.LOCAL, run_dir, efa_file, clubdesk_file, data.result, _importable(data), client)
+
+    log = (run_dir / EFACLI_LOG_NAME).read_text(encoding="utf-8")
+    import_file = run_dir / "import" / "1004_Neu_Laura.csv"
+    assert log.count(">>> persons") == 3
+    assert f">>> import -impmode=addupdate {import_file}" in log
+    # nach den Importen nichts mehr ins (geschlossene) Log
+    assert client.on_command is None
 
 
 def test_run_is_applied_only_once(inputs):

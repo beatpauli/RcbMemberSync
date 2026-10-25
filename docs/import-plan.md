@@ -14,8 +14,10 @@ efaCLI in efa nachgeführt werden.
 2. **Der Benutzer entscheidet, was eingespielt wird.** Es gibt keine
    automatische Sperre wegen veralteter Exporte.
 3. **Eine Importdatei je Person**, ein efaCLI-`import` je Datei.
-   - Name: `<ExternalId>_<LastName>_<FirstName>.csv`, Leerzeichen werden
-     weggelassen, Umlaute bleiben (z.B. `1001_vonAllmen_Jürg.csv`).
+   - Name: `<ExternalId>_<LastName>_<FirstName>.csv`, nur ASCII: Umlaute
+     umschrieben (ä → ae, ß → ss), Akzente entfernt (é → e), Leerzeichen und
+     alle übrigen Zeichen ausser Bindestrich weggelassen, da efaCLI Dateien mit
+     Sonderzeichen im Namen nicht findet (z.B. `1001_vonAllmen_Juerg.csv`).
    - Geänderte Person: Spalten `Id` + **alle** geänderten Attribute.
    - Neue Person: alle Attribute.
    - Ausgetretene Person: **keine Importdatei**. `InvalidFrom` lässt sich
@@ -234,8 +236,8 @@ versioniert).
 - [x] RcbClubdeskExport: Download-Pfad als Parameter, C2 (`59c649e`)
 - [x] RcbMemberSync: `import_files.py` – Laufverzeichnis
       (`create_run_dir`), Importdatei je Person (`write_import_files`),
-      Liste der Austritte (`leavers`). Dateinamen ohne Leerzeichen und ohne
-      unter Windows unzulässige Zeichen (`\/:*?"<>|`), Umlaute bleiben.
+      Liste der Austritte (`leavers`). Dateinamen nur ASCII (Umlaute
+      umschrieben, Akzente entfernt, Leerzeichen/Sonderzeichen weggelassen).
 - [x] RcbMemberSync GUI Teil 1: Instanzauswahl (Wechsel verwirft die
       efa-Datei und beginnt einen neuen Lauf), Laufverzeichnis beim ersten
       Export, Exporte landen als `efa_vorher.csv` / `clubdesk.csv` darin
@@ -264,7 +266,11 @@ versioniert).
         kein Log, der Lauf kann wiederholt werden. Exporte nach dem Einspielen
         beginnen einen neuen Lauf.
       - Demodaten werden nie eingespielt.
-      - Das Log enthält je Import Modus, Datei und Anzahl, nicht die
-        Rohausgabe von efaCLI (`import_file` liefert nur die Anzahl).
+      - Das Log enthält jeden an efaCLI gesendeten Befehl (`>>> persons`,
+        `>>> import …` mit vollem Pfad; über `EfaClient.on_command` aus
+        RcbEfaExport) und je Datei Ergebnis, Modus und Anzahl, nicht die
+        Rohausgabe von efaCLI (`import_file` liefert nur die Anzahl). Der
+        Startbefehl der Sitzung (enthält das Passwort) und `quit` werden
+        nicht protokolliert.
 - [ ] GUI Teil 4: Kontrolle (Export + Vergleich danach)
 - [ ] RcbMemberSync: `assign-ids` als Kommandozeile + Run-Configs
