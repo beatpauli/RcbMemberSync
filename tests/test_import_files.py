@@ -61,8 +61,8 @@ def test_changed_person_with_several_attributes(tmp_path):
     [file] = write_import_files([probe], tmp_path)
 
     assert _read(file.path) == (
-        "Id|NameAffix|AddressStreet|AddressCity|AddressZip\r\n"
-        "e-1003|B|Neuweg 12|Baden|5400\r\n"
+        "Id|NameAffix|Email\r\n"
+        "e-1003|B|p.probe@x.ch\r\n"
     )
 
 
@@ -100,9 +100,9 @@ def test_changed_person_with_only_invalid_from_gets_no_file(tmp_path):
 
 def test_file_is_utf8_without_bom(tmp_path):
 
-    change = _change(last_name="Müller", field_changes=[FieldChange("AddressCity", "Baden", "Zürich")])
+    change = _change(last_name="Müller", field_changes=[FieldChange("LastName", "Muller", "Müller")])
 
     [file] = write_import_files([change], tmp_path)
 
     assert not file.path.read_bytes().startswith(b"\xef\xbb\xbf")
-    assert _read(file.path) == "Id|AddressCity\r\ne-1|Zürich\r\n"
+    assert _read(file.path) == "Id|LastName\r\ne-1|Müller\r\n"

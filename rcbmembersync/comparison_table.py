@@ -31,16 +31,12 @@ COLUMN_TRANSFER = "Übernahme"
 DISPLAY_COLUMNS = {
     "FirstName": "Vorname",
     "LastName": "Nachname",
+    "FirstLastName": "Nachname, Vorname",
     "Email": "E-Mail",
     "NameAffix": "Brevet",
     "StatusId": "Ruderkategorie",
     "Gender": "Geschlecht",
     "Birthday": "Geburtsdatum",
-    "AddressStreet": "Adresse",
-    "AddressAdditional": "Adress-Zusatz",
-    "AddressZip": "PLZ",
-    "AddressCity": "Ort",
-    "AddressCountry": "Land",
     "InvalidFrom": "Ungültig ab",
 }
 

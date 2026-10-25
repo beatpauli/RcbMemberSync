@@ -53,7 +53,7 @@ def test_several_differences():
 
     row = _row(_demo_table(), "Probe")
 
-    assert set(row.differences) == {"Brevet", "Adresse", "Ort", "PLZ"}
+    assert set(row.differences) == {"Brevet", "E-Mail"}
 
 
 def test_unchanged_person_is_not_shown():
