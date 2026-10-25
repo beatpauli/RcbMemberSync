@@ -1,0 +1,7 @@
+Id|FirstName|LastName|NameAffix|Title|Gender|Birthday|Association|StatusId|AddressStreet|AddressAdditional|AddressCity|AddressZip|AddressCountry|Email|MembershipNo|Password|ExternalId|Disability|ExcludeFromStatistics|ExcludeFromCompetition|ExcludeFromClubwork|BoatUsageBan|InputShortcut|DefaultBoatId|FreeUse1|FreeUse2|FreeUse3|EfbId|ValidFrom|InvalidFrom|Invisible|Deleted|ChangeCount|LastModified
+e-1001|Max|Muster|A||männlich|01.02.1980||Breitensport|Seeweg 1||Baden|5400|Schweiz|max.muster@x.ch|||1001|||||||||||||||||
+e-1002|Anna|Beispiel|B||weiblich|15.06.1992||Leistungssport|Bergstrasse 7||Baden|5400|Schweiz|anna@x.ch|||1002|||||||||||||||||
+e-1003|Peter|Probe|A||männlich|30.11.1975||Breitensport|Altweg 3||Wettingen|5430|Schweiz|peter.probe@x.ch|||1003|||||||||||||||||
+e-1005|Hans|Alt|C||männlich|05.05.1950||Breitensport|Ruheweg 9||Baden|5400|Schweiz|hans.alt@x.ch|||1005|||||||||||||||||
+e-1006|Erika|Austritt|A||weiblich|20.03.1988||Fitnesssport|Flussweg 2||Ennetbaden|5408|Schweiz|erika@x.ch|||1006|||||||||||||||||
+e-9999|Otto|Ohneid|||männlich|12.12.2000||Jugendsport|Weg 4||Baden|5400|Schweiz|otto@x.ch||||||||||||||||||||

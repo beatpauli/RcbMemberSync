@@ -14,6 +14,9 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
 OUTPUT_DIR = BASE_DIR / "output"
 
+# Erfundene Testdaten für den Prototyp (keine echten Mitglieder)
+DEMO_DIR = BASE_DIR / "tests" / "fixtures" / "demo"
+
 # Paketname -> Anzeigename; True = Projekt braucht eine eigene .env
 LIBRARIES = {
     "rcbclubdeskexport": ("RcbClubdeskExport", True),
