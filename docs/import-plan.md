@@ -242,10 +242,13 @@ versioniert).
       (`run.py`). Von Hand gewählte Dateien und `vergleich.csv` werden erst
       bei der Freigabe abgelegt (`store_inputs`), weil Dateien nur hinter
       einem Button geschrieben werden.
-- [x] GUI Teil 2: eigene Auswahltabelle (eine Zeile je Person, nur
-      Personen mit Importdatei, alle vorausgewählt; `selection.py`), die
-      Datentabelle bleibt reine Anzeige. Liste „In efa von Hand
-      nachführen“: Austritte und jede `InvalidFrom`-Änderung.
+- [x] GUI Teil 2: Auswahl direkt in der Datentabelle, eine Zeile je
+      Person. Abweichende Felder zeigen beide Werte rot untereinander
+      (oben efa, unten ClubDesk; Spalte „Quelle“ entsprechend). Spalte
+      „Übernahme“: `Import` und/oder `von Hand: …` (Austritte, jede
+      `InvalidFrom`-Änderung). Vorausgewählt sind alle Personen mit
+      Import; angehakte Zeilen „von Hand“ werden ignoriert. Keine
+      zusätzlichen Tabellen (Wunsch Benutzer 2026-10-25).
 - [ ] GUI Teil 3: Freigabe, Einspielen, `efacli.log`
 - [ ] GUI Teil 4: Kontrolle (Export + Vergleich danach)
 - [ ] RcbMemberSync: `assign-ids` als Kommandozeile + Run-Configs

@@ -12,10 +12,9 @@ def _():
 
     from rcbefaexport.config import Instance
 
-    from rcbmembersync.comparison_table import SOURCE_EFA, build_table
+    from rcbmembersync.comparison_table import build_table
     from rcbmembersync.run import create_run_dir
     from rcbmembersync.runners import compare_files, export_clubdesk, export_efa
-    from rcbmembersync.selection import manual_tasks, selectable_changes, selection_rows
     from rcbmembersync.settings import BASE_DIR, DEMO_DIR, OUTPUT_DIR, check_environment
     return (
         BASE_DIR,
@@ -23,17 +22,13 @@ def _():
         Instance,
         OUTPUT_DIR,
         Path,
-        SOURCE_EFA,
         build_table,
         check_environment,
         compare_files,
         create_run_dir,
         export_clubdesk,
         export_efa,
-        manual_tasks,
         mo,
-        selectable_changes,
-        selection_rows,
     )
 
 
@@ -46,7 +41,12 @@ def _(mo):
     get_efa_message, set_efa_message = mo.state(None)
     get_clubdesk_message, set_clubdesk_message = mo.state(None)
 
-    # Laufverzeichnis output/<Zeitstempel>[_LOKAL]; beim ersten Export angelegt
+    # Laufverzeichnis output/<Zeitstempel>[_LOKAL]; beim ersten Export angelegt.
+    # Massgebend ist run_holder (kein State, löst keine Zellen aus); der
+    # State dient nur der Anzeige. Würden die Export-Zellen vom State
+    # abhängen, liefe ein Export nach dem Anlegen des Verzeichnisses ein
+    # zweites Mal.
+    run_holder = {"dir": None}
     get_run_dir, set_run_dir = mo.state(None)
     return (
         get_clubdesk_message,
@@ -54,6 +54,7 @@ def _(mo):
         get_efa_message,
         get_efa_path,
         get_run_dir,
+        run_holder,
         set_clubdesk_message,
         set_clubdesk_path,
         set_efa_message,
@@ -104,11 +105,12 @@ def _(Instance, check_environment, mo):
 
 
 @app.cell
-def _(instance_select, set_efa_message, set_efa_path, set_run_dir):
+def _(instance_select, run_holder, set_efa_message, set_efa_path, set_run_dir):
     # Neue Instanz → neuer Lauf. Die efa-Datei gehört zur alten Instanz und
     # wird verworfen; die ClubDesk-Datei bleibt gültig.
     instance = instance_select.value
 
+    run_holder["dir"] = None
     set_run_dir(None)
     set_efa_path("")
     set_efa_message(None)
@@ -181,14 +183,13 @@ def _(get_clubdesk_path, get_efa_path, mo, set_clubdesk_path, set_efa_path):
 
 
 @app.cell
-def _(OUTPUT_DIR, create_run_dir, get_run_dir, instance, set_run_dir):
+def _(OUTPUT_DIR, create_run_dir, instance, run_holder, set_run_dir):
     def ensure_run_dir():
         """Laufverzeichnis des aktuellen Laufs, beim ersten Aufruf angelegt."""
-        run_dir = get_run_dir()
-        if run_dir is None:
-            run_dir = create_run_dir(OUTPUT_DIR, instance)
-            set_run_dir(run_dir)
-        return run_dir
+        if run_holder["dir"] is None:
+            run_holder["dir"] = create_run_dir(OUTPUT_DIR, instance)
+            set_run_dir(run_holder["dir"])   # nur für die Anzeige
+        return run_holder["dir"]
     return (ensure_run_dir,)
 
 
@@ -293,30 +294,58 @@ def _(Path, compare_files, get_clubdesk_path, get_efa_path, mo):
 
 
 @app.cell
-def _(SOURCE_EFA, build_table, data, mo):
+def _(data, mo):
+    # Ausgewählte ClubDeskIds, neu je Abgleich; None = Vorgabe (alle mit Import)
+    get_selected_ids, set_selected_ids = mo.state(None)
+    return get_selected_ids, set_selected_ids
+
+
+@app.cell
+def _(build_table, data, get_selected_ids, mo, set_selected_ids):
     from collections import Counter
+    from html import escape
 
     from rcbcomparetool.comparator import ChangeType
+
+    from rcbmembersync.comparison_table import (
+        CASE_LABELS,
+        COLUMN_CASE,
+        COLUMN_EXTERNAL_ID,
+        COLUMN_SOURCE,
+        COLUMN_TRANSFER,
+        DISPLAY_COLUMNS,
+    )
 
     table = build_table(data)
     counts = Counter(change.change_type for change in data.result.changes)
 
-    # Farben wie im Mockup: blau = efa, grün = ClubDesk, rot = Unterschied
-    _EFA_BACKGROUND = "#dae8fc"
-    _CLUBDESK_BACKGROUND = "#d5e8d4"
-    _DIFFERENCE_COLOR = "#cc0000"
+    _DIFFERENCE_STYLE = "color:#cc0000;font-weight:bold"
+    _MANUAL_COLOR = "#777777"
+
+
+    def _stacked(values, style=""):
+        # Werte untereinander: efa oben, ClubDesk unten (wie Spalte „Quelle“)
+        return mo.Html(f'<span style="{style}">' + "<br>".join(escape(v) or "–" for v in values) + "</span>")
+
+
+    def _table_row(row):
+        cells = {
+            COLUMN_CASE: CASE_LABELS[row.change.change_type],
+            COLUMN_SOURCE: _stacked(row.sources) if len(row.sources) > 1 else row.sources[0],
+        }
+        for label in DISPLAY_COLUMNS.values():
+            if label in row.differences:
+                cells[label] = _stacked(row.differences[label], _DIFFERENCE_STYLE)
+            else:
+                cells[label] = row.values.get(label, "")
+        cells[COLUMN_TRANSFER] = row.transfer
+        cells[COLUMN_EXTERNAL_ID] = row.change.external_id
+        return cells
 
 
     def _style_cell(row_id, column, value):
-        index = int(row_id)
-        style = {
-            "backgroundColor": _EFA_BACKGROUND if table.sources[index] == SOURCE_EFA else _CLUBDESK_BACKGROUND,
-            "color": "#000000",
-        }
-        if column in table.changed_columns[index]:
-            style["color"] = _DIFFERENCE_COLOR
-            style["fontWeight"] = "bold"
-        return style
+        # Zeilen ohne Import (nur von Hand nachzuführen) grau
+        return {} if table.rows[int(row_id)].importable else {"color": _MANUAL_COLOR}
 
 
     _summary = mo.hstack(
@@ -345,85 +374,67 @@ def _(SOURCE_EFA, build_table, data, mo):
     for _conflict in data.result.conflicts:
         _items.append(mo.callout(_conflict, kind="warn"))
 
-    if table.rows:
-        _items.append(
-            mo.ui.table(
-                table.rows,
-                selection=None,
-                page_size=50,
-                show_column_summaries=False,
-                show_data_types=False,
-                freeze_columns_left=["Fall", "Quelle"],
-                style_cell=_style_cell,
-            )
+    # Auswahl je Person direkt in der Datentabelle. Vorausgewählt sind alle
+    # Personen mit Import – ClubDesk ist führend.
+    _importable_ids = {row.change.external_id for row in table.rows if row.importable}
+    _selected = _importable_ids if get_selected_ids() is None else get_selected_ids()
+
+
+    def _keep_importable(value):
+        # marimo kann einzelne Checkboxen nicht sperren: Wird eine Zeile ohne
+        # Import (z.B. ausgetreten) angehakt, wird die Tabelle mit der
+        # bereinigten Auswahl neu aufgebaut – das Häkchen verschwindet sofort.
+        ids = {row[COLUMN_EXTERNAL_ID] for row in value}
+        if ids - _importable_ids:
+            set_selected_ids(ids & _importable_ids)
+
+
+    data_table = (
+        mo.ui.table(
+            [_table_row(row) for row in table.rows],
+            selection="multi",
+            initial_selection=[i for i, row in enumerate(table.rows) if row.change.external_id in _selected],
+            on_change=_keep_importable,
+            pagination=False,
+            show_column_summaries=False,
+            show_data_types=False,
+            freeze_columns_left=[COLUMN_CASE, COLUMN_SOURCE, "Vorname", "Nachname"],
+            style_cell=_style_cell,
         )
-    else:
+        if table.rows
+        else None
+    )
+
+    if data_table is None:
         _items.append(mo.callout("Keine Unterschiede zwischen efa und ClubDesk.", kind="success"))
 
     mo.vstack(_items)
-    return
+    return COLUMN_EXTERNAL_ID, data_table, table
 
 
 @app.cell
-def _(data, manual_tasks, mo, selectable_changes, selection_rows):
-    # Eine Zeile je Person; nur Personen mit Importdatei (neu / geändert).
-    # Vorausgewählt ist alles – ClubDesk ist führend, abgewählt wird nur,
-    # was (noch) nicht übernommen werden soll.
-    selectable = selectable_changes(data.result)
-    tasks = manual_tasks(data.result)
+def _(COLUMN_EXTERNAL_ID, data_table, mo, table):
+    mo.stop(data_table is None)
 
-    selection_table = (
-        mo.ui.table(
-            selection_rows(selectable),
-            selection="multi",
-            initial_selection=list(range(len(selectable))),
-            page_size=50,
-            show_column_summaries=False,
-            show_data_types=False,
-            show_download=False,
-        )
-        if selectable
-        else None
+    _selected_ids = {row[COLUMN_EXTERNAL_ID] for row in data_table.value}
+    _importable = [row for row in table.rows if row.importable]
+    # nur Personen mit Import, auch falls eine Zeile „von Hand“ kurz angehakt war
+    selected_changes = [row.change for row in _importable if row.change.external_id in _selected_ids]
+
+    _hint = f"**{len(selected_changes)} von {len(_importable)} Personen zum Import ausgewählt.**"
+
+    mo.vstack(
+        [
+            mo.md(
+                "Abweichende Felder: oben efa, unten ClubDesk. Pro Person werden alle "
+                "Änderungen übernommen oder keine – stimmt etwas nicht, in ClubDesk "
+                "korrigieren und neu abgleichen. „Ungültig ab“ lässt sich nicht "
+                "importieren und ist in der efa-Oberfläche von Hand nachzuführen."
+            ),
+            data_table,
+            mo.md(_hint),
+        ]
     )
-    return selectable, selection_table, tasks
-
-
-@app.cell
-def _(mo, selectable, selection_table, tasks):
-    _selected_ids = {row["ExternalId"] for row in selection_table.value} if selection_table is not None else set()
-    selected_changes = [change for change in selectable if change.external_id in _selected_ids]
-
-    _items = [mo.md("## Änderungen übernehmen")]
-
-    if selection_table is None:
-        _items.append(mo.callout("Keine Änderungen, die nach efa eingespielt werden können.", kind="neutral"))
-    else:
-        _items += [
-            mo.md(
-                "Pro Person werden alle Änderungen übernommen oder keine. "
-                "Stimmt etwas nicht, in ClubDesk korrigieren und neu abgleichen."
-            ),
-            selection_table,
-            mo.md(f"**{len(selected_changes)} von {len(selectable)} Personen ausgewählt.**"),
-        ]
-
-    if tasks:
-        _items += [
-            mo.md("## In efa von Hand nachführen"),
-            mo.md(
-                "„Ungültig ab“ lässt sich nicht importieren. Diese Personen in der "
-                "efa-Oberfläche bearbeiten („ab Datum ungültig“)."
-            ),
-            mo.ui.table(
-                tasks,
-                selection=None,
-                page_size=50,
-                show_column_summaries=False,
-                show_data_types=False,
-            ),
-        ]
-
-    mo.vstack(_items)
     return (selected_changes,)
 
 

@@ -1,9 +1,13 @@
 """
 comparison_table.py
 
-Baut aus dem Comparator-Ergebnis die Zeilen der Datentabelle (Mockup v1):
-pro Person der efa- und der ClubDesk-Datensatz direkt untereinander,
-abweichende Werte markiert.
+Baut aus dem Comparator-Ergebnis die Zeilen der Datentabelle: eine Zeile je
+Person. Abweichende Felder enthalten beide Werte (efa oben, ClubDesk unten),
+die Spalte „Quelle“ zeigt die Reihenfolge an. In derselben Tabelle wird je
+Person gewählt, ob ihre Änderungen nach efa übernommen werden.
+
+Die Darstellung (HTML, Farben) macht app.py, damit dieses Modul ohne marimo
+testbar bleibt.
 """
 
 from dataclasses import dataclass, field
@@ -11,6 +15,7 @@ from dataclasses import dataclass, field
 from rcbcomparetool.comparator import ChangeType, PersonChange
 from rcbcomparetool.mapper import date_from_timestamp, format_date
 
+from .import_files import NOT_IMPORTABLE, import_row
 from .runners import ComparisonData
 
 
@@ -19,6 +24,8 @@ SOURCE_CLUBDESK = "ClubDesk"
 
 COLUMN_CASE = "Fall"
 COLUMN_SOURCE = "Quelle"
+COLUMN_EXTERNAL_ID = "ClubDeskId"
+COLUMN_TRANSFER = "Übernahme"
 
 # efa-Spalte -> Anzeigename, in Anzeigereihenfolge
 DISPLAY_COLUMNS = {
@@ -43,12 +50,22 @@ CASE_LABELS = {
     ChangeType.LEFT: "Ausgetreten",
 }
 
+TRANSFER_IMPORT = "Import"
+
+
+@dataclass
+class TableRow:
+    change: PersonChange
+    sources: tuple[str, ...]                 # (efa,), (ClubDesk,) oder (efa, ClubDesk)
+    values: dict[str, str]                   # Anzeigename -> Wert (Felder ohne Abweichung)
+    differences: dict[str, tuple[str, str]]  # Anzeigename -> (efa-Wert, ClubDesk-Wert)
+    transfer: str                            # Inhalt der Spalte „Übernahme“
+    importable: bool                         # auswählbar: es entsteht eine Importdatei
+
 
 @dataclass
 class ComparisonTable:
-    rows: list[dict[str, str]] = field(default_factory=list)
-    sources: list[str] = field(default_factory=list)                # je Zeile
-    changed_columns: list[set[str]] = field(default_factory=list)   # je Zeile, Anzeigenamen
+    rows: list[TableRow] = field(default_factory=list)
 
 
 def display_value(column: str, value: str) -> str:
@@ -62,29 +79,40 @@ def display_value(column: str, value: str) -> str:
     return value
 
 
-def _row(change: PersonChange, source: str, record: dict[str, str]) -> dict[str, str]:
+def _invalid_from_task(old: str, new: str) -> str:
 
-    row = {
-        COLUMN_CASE: CASE_LABELS[change.change_type],
-        COLUMN_SOURCE: source,
-    }
+    if not new.strip():
+        return "„ab Datum ungültig“ entfernen"
 
-    for column, label in DISPLAY_COLUMNS.items():
-        row[label] = display_value(column, record.get(column, ""))
+    task = f"ab {display_value('InvalidFrom', new)} ungültig setzen"
+    if old.strip():
+        task += f" (bisher {display_value('InvalidFrom', old)})"
+    return task
 
-    return row
+
+def _transfer(change: PersonChange, importable: bool) -> str:
+    """Import, von Hand (InvalidFrom ist nicht importierbar) oder beides."""
+
+    parts = [TRANSFER_IMPORT] if importable else []
+
+    for field_change in change.field_changes:
+        if field_change.attribute in NOT_IMPORTABLE:
+            parts.append(f"von Hand: {_invalid_from_task(field_change.old, field_change.new)}")
+
+    return "; ".join(parts)
 
 
 def build_table(data: ComparisonData) -> ComparisonTable:
     """
-    Erzeugt die Tabellenzeilen.
+    Eine Zeile je Person.
 
-    - efa-Zeile: unveränderte efa-Rohzeile
-    - ClubDesk-Zeile: Import-Zeile des Comparators (ClubDesk-Werte in
+    - efa-Wert: unveränderte efa-Rohzeile
+    - ClubDesk-Wert: Import-Zeile des Comparators (ClubDesk-Werte in
       efa-Darstellung)
-    - markiert: Spalten, in denen sich die Import-Zeile von der efa-Rohzeile
-      unterscheidet, also alles, was der Import in efa ändern würde
-    - Neu: nur ClubDesk-Zeile; ausgetreten ohne ClubDesk-Datensatz: nur efa-Zeile
+    - Abweichung: Spalten, in denen sich beide unterscheiden, also alles, was
+      in efa zu ändern ist
+    - Neu: nur ClubDesk-Werte; ausgetreten ohne ClubDesk-Datensatz: nur
+      efa-Werte, die Abweichung zeigt das neue „Ungültig ab“
     """
 
     table = ComparisonTable()
@@ -92,23 +120,44 @@ def build_table(data: ComparisonData) -> ComparisonTable:
     for change in data.result.changes:
 
         efa_row = data.efa_rows.get(change.efa_id) if change.change_type is not ChangeType.NEW else None
+        in_clubdesk = change.change_type is ChangeType.NEW or change.external_id in data.clubdesk_ids
 
         if efa_row is None:
-            changed = set()
+            sources = (SOURCE_CLUBDESK,)
+        elif in_clubdesk:
+            sources = (SOURCE_EFA, SOURCE_CLUBDESK)
         else:
-            changed = {
-                label
-                for column, label in DISPLAY_COLUMNS.items()
-                if efa_row.get(column, "") != change.efa_record.get(column, "")
-            }
+            sources = (SOURCE_EFA,)
 
-            table.rows.append(_row(change, SOURCE_EFA, efa_row))
-            table.sources.append(SOURCE_EFA)
-            table.changed_columns.append(changed)
+        values = {}
+        differences = {}
 
-        if change.change_type is ChangeType.NEW or change.external_id in data.clubdesk_ids:
-            table.rows.append(_row(change, SOURCE_CLUBDESK, change.efa_record))
-            table.sources.append(SOURCE_CLUBDESK)
-            table.changed_columns.append(changed)
+        for column, label in DISPLAY_COLUMNS.items():
+
+            new = display_value(column, change.efa_record.get(column, ""))
+
+            if efa_row is None:
+                values[label] = new
+                continue
+
+            old = display_value(column, efa_row.get(column, ""))
+
+            if old != new:
+                differences[label] = (old, new)
+            else:
+                values[label] = old
+
+        importable = import_row(change) is not None
+
+        table.rows.append(
+            TableRow(
+                change=change,
+                sources=sources,
+                values=values,
+                differences=differences,
+                transfer=_transfer(change, importable),
+                importable=importable,
+            )
+        )
 
     return table
