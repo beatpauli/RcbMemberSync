@@ -37,7 +37,8 @@ Grundsätze:
   Reaktivität einen Export bei jeder UI-Änderung erneut starten.
 - Mehrdeutigkeiten werden nur angezeigt, nie in der UI aufgelöst (Regel aus
   `RcbCompareTool`).
-- Der **Import** nach efa wird nie ausgelöst, das Tool erzeugt nur die Dateien.
+- Das Einspielen nach efa erfolgt nur nach ausdrücklicher Freigabe durch den
+  Benutzer (seit 2026-10-25, siehe `docs/import-plan.md`).
 
 ## Projektstruktur
 
@@ -119,11 +120,23 @@ Die Logik bleibt in `rcbmembersync/`, damit sie ohne marimo testbar ist.
 Änderungen an den drei bestehenden Projekten (C1, C2, optional E2) jeweils als
 kleine, eigene Commits im betroffenen Projekt.
 
+### Stand (2026-10-23)
+
+- Schritt 1 **erledigt**: Gerüst, venv, editierbare Installation, C1 in
+  RcbClubdeskExport committet (`97e78d2`), Playwright-Spike ok.
+- Erstes `app.py` mit Konfigurationsprüfung und Platzhaltern, PyCharm-Run-Configs
+  (App starten, Notebook bearbeiten, All Tests).
+- GUI-Aufbau in Diskussion: Mockup v1 und offene Fragen in `docs/ui-design.md`.
+- Nächster Schritt: offene Fragen in `docs/ui-design.md` klären, dann Schritt 2.
+
 ## Entscheidungen (2026-10-23)
 
 1. **efaCLI-Export darf ausgelöst werden.** Die UI startet über RcbEfaExport
    den lesenden Export. Der **Import** nach efa bleibt manuell und wird nie
    ausgelöst.
+   *Geändert 2026-10-25:* RcbMemberSync spielt die Änderungen nach
+   ausdrücklicher Freigabe durch den Benutzer selbst nach efa ein, siehe
+   `docs/import-plan.md`.
 2. **Zugangsdaten pro Projekt:** Jedes Projekt behält seine eigene `.env`.
    RcbMemberSync liest sie aus dem jeweiligen Projektordner, der über den
    Speicherort des installierten Pakets ermittelt wird (editierbare

@@ -8,14 +8,23 @@ installiert über `requirements-dev.txt`):
 - `../RcbEfaExport` (`rcbefaexport`) – efa-Export via efaCLI + VPN
 - `../RcbCompareTool` (`rcbcomparetool`) – Phase 1 / Phase 2 Abgleich
 
-Plan, Analyse und Entscheidungen: `docs/plan.md`.
+Plan, Analyse und Entscheidungen: `docs/plan.md` (Abschnitt „Stand“).
+GUI-Aufbau, Mockup und offene Fragen: `docs/ui-design.md`.
+Änderungen nach efa nachführen (freigegeben 2026-10-25): `docs/import-plan.md`
+– **hier weitermachen**.
 
 ## Regeln
 
 - **Keine Fachlogik hier.** Matching/Vergleich gehören ins Compare-Tool, Export
   in die Export-Projekte. Hier nur Ablauf, Anzeige, Dateipfade.
-- **efaCLI-Import niemals auslösen.** Der lesende efa-Export über
-  RcbEfaExport ist erlaubt; der Import der erzeugten Dateien passiert manuell.
+- **Einspielen nach efa nur nach ausdrücklicher Freigabe durch den Benutzer**
+  (Ablauf siehe `docs/import-plan.md`). Die efaCLI-Ansteuerung liegt in
+  RcbEfaExport, RcbMemberSync ruft sie nur auf.
+- **Claude löst ein Einspielen nie selbst aus** – auch nicht gegen die lokale
+  Testinstanz, auch nicht zum Testen. Das macht ausschliesslich der Benutzer.
+  Der lesende efa-Export ist erlaubt.
+- Austritte werden nicht eingespielt (`InvalidFrom` lässt sich nicht
+  importieren), sondern nur zum Nachführen von Hand aufgelistet.
 - **Mehrdeutigkeiten nur anzeigen**, nie in der UI auflösen.
 - Schritte mit Nebenwirkung (Login, VPN, efaCLI, Dateien schreiben) immer
   hinter `mo.ui.run_button()` + `mo.stop(...)`.
