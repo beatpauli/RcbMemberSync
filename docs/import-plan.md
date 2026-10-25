@@ -242,7 +242,10 @@ versioniert).
       (`run.py`). Von Hand gewählte Dateien und `vergleich.csv` werden erst
       bei der Freigabe abgelegt (`store_inputs`), weil Dateien nur hinter
       einem Button geschrieben werden.
-- [ ] GUI Teil 2: Auswahl je Person, Austrittsliste
+- [x] GUI Teil 2: eigene Auswahltabelle (eine Zeile je Person, nur
+      Personen mit Importdatei, alle vorausgewählt; `selection.py`), die
+      Datentabelle bleibt reine Anzeige. Liste „In efa von Hand
+      nachführen“: Austritte und jede `InvalidFrom`-Änderung.
 - [ ] GUI Teil 3: Freigabe, Einspielen, `efacli.log`
 - [ ] GUI Teil 4: Kontrolle (Export + Vergleich danach)
 - [ ] RcbMemberSync: `assign-ids` als Kommandozeile + Run-Configs

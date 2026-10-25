@@ -51,7 +51,7 @@ class ComparisonTable:
     changed_columns: list[set[str]] = field(default_factory=list)   # je Zeile, Anzeigenamen
 
 
-def _display_value(column: str, value: str) -> str:
+def display_value(column: str, value: str) -> str:
 
     if column == "InvalidFrom" and value.strip():
         try:
@@ -70,7 +70,7 @@ def _row(change: PersonChange, source: str, record: dict[str, str]) -> dict[str,
     }
 
     for column, label in DISPLAY_COLUMNS.items():
-        row[label] = _display_value(column, record.get(column, ""))
+        row[label] = display_value(column, record.get(column, ""))
 
     return row
 

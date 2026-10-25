@@ -15,6 +15,7 @@ def _():
     from rcbmembersync.comparison_table import SOURCE_EFA, build_table
     from rcbmembersync.run import create_run_dir
     from rcbmembersync.runners import compare_files, export_clubdesk, export_efa
+    from rcbmembersync.selection import manual_tasks, selectable_changes, selection_rows
     from rcbmembersync.settings import BASE_DIR, DEMO_DIR, OUTPUT_DIR, check_environment
     return (
         BASE_DIR,
@@ -29,7 +30,10 @@ def _():
         create_run_dir,
         export_clubdesk,
         export_efa,
+        manual_tasks,
         mo,
+        selectable_changes,
+        selection_rows,
     )
 
 
@@ -358,6 +362,69 @@ def _(SOURCE_EFA, build_table, data, mo):
 
     mo.vstack(_items)
     return
+
+
+@app.cell
+def _(data, manual_tasks, mo, selectable_changes, selection_rows):
+    # Eine Zeile je Person; nur Personen mit Importdatei (neu / geändert).
+    # Vorausgewählt ist alles – ClubDesk ist führend, abgewählt wird nur,
+    # was (noch) nicht übernommen werden soll.
+    selectable = selectable_changes(data.result)
+    tasks = manual_tasks(data.result)
+
+    selection_table = (
+        mo.ui.table(
+            selection_rows(selectable),
+            selection="multi",
+            initial_selection=list(range(len(selectable))),
+            page_size=50,
+            show_column_summaries=False,
+            show_data_types=False,
+            show_download=False,
+        )
+        if selectable
+        else None
+    )
+    return selectable, selection_table, tasks
+
+
+@app.cell
+def _(mo, selectable, selection_table, tasks):
+    _selected_ids = {row["ExternalId"] for row in selection_table.value} if selection_table is not None else set()
+    selected_changes = [change for change in selectable if change.external_id in _selected_ids]
+
+    _items = [mo.md("## Änderungen übernehmen")]
+
+    if selection_table is None:
+        _items.append(mo.callout("Keine Änderungen, die nach efa eingespielt werden können.", kind="neutral"))
+    else:
+        _items += [
+            mo.md(
+                "Pro Person werden alle Änderungen übernommen oder keine. "
+                "Stimmt etwas nicht, in ClubDesk korrigieren und neu abgleichen."
+            ),
+            selection_table,
+            mo.md(f"**{len(selected_changes)} von {len(selectable)} Personen ausgewählt.**"),
+        ]
+
+    if tasks:
+        _items += [
+            mo.md("## In efa von Hand nachführen"),
+            mo.md(
+                "„Ungültig ab“ lässt sich nicht importieren. Diese Personen in der "
+                "efa-Oberfläche bearbeiten („ab Datum ungültig“)."
+            ),
+            mo.ui.table(
+                tasks,
+                selection=None,
+                page_size=50,
+                show_column_summaries=False,
+                show_data_types=False,
+            ),
+        ]
+
+    mo.vstack(_items)
+    return (selected_changes,)
 
 
 if __name__ == "__main__":
