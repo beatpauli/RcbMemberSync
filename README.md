@@ -28,6 +28,17 @@ marimo run app.py      # App-Modus (Bedienoberfläche)
 marimo edit app.py     # Entwicklung
 ```
 
+Phase 1 „IDs vergeben“ (ClubDesk-Id als ExternalId nach efa, Zuordnung über
+den Namen) läuft ohne Oberfläche, Freigabe durch Eingabe von `ja`:
+
+```
+python -m rcbmembersync assign-ids                          # produktiv
+python -m rcbmembersync assign-ids --instance local         # lokale Testinstanz
+python -m rcbmembersync assign-ids --clubdesk-file PFAD     # ClubDesk-Datei statt Export
+```
+
+Run-Configs: „IDs vergeben produktiv“ und „IDs vergeben lokal“.
+
 ## Tests
 
 ```

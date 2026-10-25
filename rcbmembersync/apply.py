@@ -14,8 +14,8 @@ Ein Lauf wird nur einmal eingespielt: efacli.log wird exklusiv angelegt und
 dient als Sperre. Ausgelöst wird ausschliesslich vom Benutzer über die GUI.
 """
 
-from collections.abc import Callable
-from contextlib import AbstractContextManager
+from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -107,18 +107,16 @@ def _case_counts(changes: list[PersonChange]) -> str:
     return f"{len(changes)} Personen ({new} neu, {changed} geändert)"
 
 
-def import_all(files: list[ImportFile], efa: Any, log_path: Path, header: list[str]) -> list[ImportOutcome]:
+@contextmanager
+def efacli_log(log_path: Path, header: list[str], efa: Any) -> Iterator[Callable[[str], None]]:
     """
-    Importiert jede Datei einzeln über efa.persons.import_file und protokolliert
-    jeden an efaCLI gesendeten Befehl sowie das Ergebnis je Datei. Fehler einer
-    Person brechen den Lauf nicht ab.
+    Protokoll der efaCLI-Aufrufe; liefert eine Funktion zum Schreiben einer
+    Zeile. Jeder an efaCLI gesendete Befehl wird automatisch protokolliert.
 
-    Das Log wird exklusiv angelegt (FileExistsError, falls es schon existiert)
-    und nach jeder Zeile geschrieben, damit es auch bei einem Absturz den
-    Stand zeigt.
+    Das Log wird exklusiv angelegt (FileExistsError, falls es schon existiert,
+    also schon eingespielt wurde) und nach jeder Zeile geschrieben, damit es
+    auch bei einem Absturz den Stand zeigt.
     """
-
-    outcomes = []
 
     with log_path.open("x", encoding="utf-8") as log:
 
@@ -133,17 +131,31 @@ def import_all(files: list[ImportFile], efa: Any, log_path: Path, header: list[s
         # (z.B. quit), werden nicht mehr protokolliert
         efa.on_command = lambda command: write(f">>> {command}")
         try:
-            for file in files:
-                try:
-                    outcome = ImportOutcome(file, records=efa.persons.import_file(file.path, file.mode))
-                except Exception as e:
-                    outcome = ImportOutcome(file, error=f"{type(e).__name__}: {e}")
-
-                outcomes.append(outcome)
-                status = "ok     " if outcome.ok else "FEHLER "
-                write(f"{status} {file.path.name} ({file.mode}): {outcome.message}")
+            yield write
         finally:
             efa.on_command = None
+
+
+def import_all(files: list[ImportFile], efa: Any, log_path: Path, header: list[str]) -> list[ImportOutcome]:
+    """
+    Importiert jede Datei einzeln über efa.persons.import_file und protokolliert
+    jeden an efaCLI gesendeten Befehl sowie das Ergebnis je Datei. Fehler einer
+    Person brechen den Lauf nicht ab.
+    """
+
+    outcomes = []
+
+    with efacli_log(log_path, header, efa) as write:
+
+        for file in files:
+            try:
+                outcome = ImportOutcome(file, records=efa.persons.import_file(file.path, file.mode))
+            except Exception as e:
+                outcome = ImportOutcome(file, error=f"{type(e).__name__}: {e}")
+
+            outcomes.append(outcome)
+            status = "ok     " if outcome.ok else "FEHLER "
+            write(f"{status} {file.path.name} ({file.mode}): {outcome.message}")
 
         failed = sum(1 for outcome in outcomes if not outcome.ok)
         write(f"Ende: {len(outcomes) - failed} ok, {failed} fehlgeschlagen")

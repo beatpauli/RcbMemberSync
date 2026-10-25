@@ -130,6 +130,14 @@ python -m rcbmembersync assign-ids [--instance local] [--clubdesk-file PFAD]
 
 Run-Configs: „IDs vergeben produktiv“ und „IDs vergeben lokal“.
 
+Ergänzung bei der Umsetzung: Eine in efa **schon gesetzte ExternalId wird nie
+überschrieben.** Eingespielt werden nur Treffer ohne ExternalId in efa; ein
+wiederholter Lauf ist damit harmlos. Als Konflikt gemeldet und nicht
+eingespielt werden:
+- efa hat eine andere ExternalId als die ClubDesk-Id,
+- die ClubDesk-Id ist in efa schon bei einer anderen Person eingetragen,
+- die ClubDesk-Person hat keine Id.
+
 ## Aufteilung auf die Projekte
 
 | Projekt | Neu |
@@ -151,8 +159,9 @@ Run-Configs: „IDs vergeben produktiv“ und „IDs vergeben lokal“.
 
 Die ursprünglichen Punkte 1–6 (Teil-Update, Versionierung, Schlüssel, neue
 Person, Rückmeldung, Wertformate) sind durch die Tests geklärt, siehe
-„Testergebnisse“. Ein Attribut zu leeren ist nicht nötig: Der Comparator
-übernimmt nur nicht-leere ClubDesk-Werte.
+„Testergebnisse“. Ein Attribut zu leeren ist nur bei der E-Mail nötig (leere
+ClubDesk-Adresse leert die efa-Adresse, seit 2026-10-25); sonst übernimmt der
+Comparator nur nicht-leere ClubDesk-Werte.
 
 Neu offen:
 
@@ -287,4 +296,14 @@ versioniert).
         standen, werden als unerwartet gemeldet (z.B. inzwischen geändert).
       - Übrige Unterschiede von vorher (nicht ausgewählt / „von Hand“) werden
         nur gezählt.
-- [ ] RcbMemberSync: `assign-ids` als Kommandozeile + Run-Configs
+- [x] RcbMemberSync: `assign-ids` als Kommandozeile + Run-Configs
+      (`rcbmembersync/assign_ids.py`, `rcbmembersync/__main__.py`; getestet
+      mit Ersatz-Export und Ersatz-Client, den ersten echten Lauf macht der
+      Benutzer).
+      - Laufverzeichnis wie in der GUI: `efa_vorher.csv`, `clubdesk.csv`,
+        `import/ids_import.csv` (`Id|ExternalId`, nur einzuspielende
+        Personen), `ids_zusammenfassung.txt`, `ohne_treffer_efa.log`,
+        `ohne_treffer_clubdesk.log`, `efacli.log`, `efa_nachher.csv`.
+      - Die Importdatei liegt vor der Freigabe vor und kann geprüft werden.
+      - Kontrolle: Im Kontroll-Export muss jede eingespielte Person die
+        erwartete ExternalId tragen; sonst Meldung und Exit-Code 1.
