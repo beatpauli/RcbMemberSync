@@ -85,6 +85,11 @@ Die Logik bleibt in `rcbmembersync/`, damit sie ohne marimo testbar ist.
   Aufruf von `sync_playwright()` scheitert mit „Sync API inside the asyncio
   loop“. In einem eigenen Thread (`ThreadPoolExecutor`) funktioniert er.
   → Der ClubDesk-Export läuft in `runners.py` immer in einem Worker-Thread.
+  *Korrektur 2026-10-25:* Unter `marimo run` reicht der Thread nicht. marimo
+  stellt unter Windows prozessweit die Selector-Ereignisschleife ein, Playwright
+  bekommt damit auch im Thread eine Schleife ohne Unterprozess-Unterstützung
+  (`NotImplementedError` beim Browserstart; der Spike lief ausserhalb von
+  marimo). Der Export läuft deshalb in einem eigenen Prozess (spawn).
 - `headless` lässt sich bereits übergeben. Für die UI ist `headless=True`
   sinnvoll, sofern der Login ohne Interaktion klappt.
 

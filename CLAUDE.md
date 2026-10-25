@@ -28,8 +28,13 @@ GUI-Aufbau, Mockup und offene Fragen: `docs/ui-design.md`.
 - **Mehrdeutigkeiten nur anzeigen**, nie in der UI auflösen.
 - Schritte mit Nebenwirkung (Login, VPN, efaCLI, Dateien schreiben) immer
   hinter `mo.ui.run_button()` + `mo.stop(...)`.
-- Playwright (ClubDesk) nur in einem Worker-Thread aufrufen – marimo-Zellen
-  laufen in einer asyncio-Schleife, die Sync-API verweigert dort den Start.
+- Playwright (ClubDesk) nur in einem eigenen Prozess (spawn) aufrufen –
+  marimo-Zellen laufen in einer asyncio-Schleife (Sync-API verweigert den
+  Start), und marimo stellt unter Windows prozessweit die Selector-Schleife
+  ein, die keinen Browser-Prozess starten kann; ein Worker-Thread reicht
+  deshalb nicht.
+- Export-Zellen (und später Einspielen) dürfen nicht von einem State
+  abhängen, den sie selbst setzen – sonst laufen sie ein zweites Mal.
 - Zugangsdaten bleiben in der `.env` des jeweiligen Projekts; nie Werte in der
   UI anzeigen oder loggen.
 - `app.py` dünn halten, Logik in `rcbmembersync/` (ohne marimo testbar).

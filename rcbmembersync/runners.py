@@ -5,7 +5,10 @@ Wrapper um die drei Bibliotheken: Exporte aus efa und ClubDesk, Abgleich.
 Enthält keine Fachlogik – die liegt in den jeweiligen Projekten.
 """
 
-from concurrent.futures import ThreadPoolExecutor
+import asyncio
+import multiprocessing
+import sys
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -41,6 +44,13 @@ def export_efa(instance: Instance, run_dir: Path) -> Path:
 
 def _export_clubdesk(download_dir: Path) -> Path:
 
+    # Läuft im eigenen Prozess (siehe export_clubdesk). Auch dort kann die
+    # Selector-Schleife von marimo eingestellt sein (der Prozess lädt das
+    # Hauptmodul von "python -m marimo"); Playwright braucht unter Windows
+    # die Proactor-Schleife, um den Browser zu starten.
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
     from rcbclubdeskexport import ClubDesk
     from rcbclubdeskexport.contacts import Contacts
 
@@ -69,11 +79,18 @@ def export_clubdesk(run_dir: Path) -> Path:
     Exportiert die ClubDesk-Mitglieder über RcbClubdeskExport als
     clubdesk.csv ins Laufverzeichnis.
 
-    Läuft in einem eigenen Thread: marimo-Zellen laufen in einer
-    asyncio-Schleife, darin verweigert die Playwright-Sync-API den Start.
+    Läuft in einem eigenen Prozess (spawn):
+    - marimo-Zellen laufen in einer asyncio-Schleife, darin verweigert die
+      Playwright-Sync-API den Start;
+    - marimo stellt unter Windows prozessweit die Selector-Ereignisschleife
+      ein, die keine Unterprozesse starten kann (NotImplementedError beim
+      Browserstart) – auch nicht in einem Worker-Thread. Ein neuer Prozess
+      startet mit der Windows-Standardschleife.
     """
 
-    with ThreadPoolExecutor(max_workers=1) as executor:
+    context = multiprocessing.get_context("spawn")
+
+    with ProcessPoolExecutor(max_workers=1, mp_context=context) as executor:
         exported = executor.submit(_export_clubdesk, run_dir).result()
 
     return adopt_file(exported, run_dir, CLUBDESK_NAME, move=True)
