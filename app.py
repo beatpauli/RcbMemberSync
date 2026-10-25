@@ -295,8 +295,12 @@ def _(Path, compare_files, get_clubdesk_path, get_efa_path, mo):
 
 @app.cell
 def _(data, mo):
-    # Ausgewählte ClubDeskIds, neu je Abgleich; None = Vorgabe (alle mit Import)
-    get_selected_ids, set_selected_ids = mo.state(None)
+    # Ausgewählte ClubDeskIds, neu je Abgleich; None = Vorgabe (alle mit Import).
+    # allow_self_loops: gesetzt wird der State aus dem on_change der
+    # Datentabelle, also aus der Zelle, die ihn liest – ohne diese Option
+    # würde die Tabelle nicht neu aufgebaut. Keine Endlosschleife: on_change
+    # setzt nur, wenn eine Zeile ohne Import angehakt ist.
+    get_selected_ids, set_selected_ids = mo.state(None, allow_self_loops=True)
     return get_selected_ids, set_selected_ids
 
 
