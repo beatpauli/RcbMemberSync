@@ -227,3 +227,15 @@ versioniert).
 - **Fehler beim Einspielen:** Schlägt der Import einer Person fehl, laufen die
   übrigen Personen weiter. Am Ende werden alle fehlgeschlagenen Personen
   gemeldet (GUI und `efacli.log`); der Kontroll-Vergleich zeigt sie wieder an.
+
+## Umsetzungsstand
+
+- [x] RcbEfaExport: `persons.import_file(pfad, mode)` (`2fbdb06`)
+- [x] RcbClubdeskExport: Download-Pfad als Parameter, C2 (`59c649e`)
+- [x] RcbMemberSync: `import_files.py` – Laufverzeichnis
+      (`create_run_dir`), Importdatei je Person (`write_import_files`),
+      Liste der Austritte (`leavers`). Dateinamen ohne Leerzeichen und ohne
+      unter Windows unzulässige Zeichen (`\/:*?"<>|`), Umlaute bleiben.
+- [ ] RcbMemberSync: GUI – Instanzauswahl, Laufverzeichnis, Auswahl je
+      Person, Austrittsliste, Freigabe, Einspielen, Kontrolle, Log
+- [ ] RcbMemberSync: `assign-ids` als Kommandozeile + Run-Configs
