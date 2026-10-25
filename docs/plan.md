@@ -79,6 +79,7 @@ Die Logik bleibt in `rcbmembersync/`, damit sie ohne marimo testbar ist.
   Path("downloads")` und `Config.SESSION_FILE = Path("clubdesk.json")` landen
   dort, wo marimo gestartet wird. Vorschlag: optionale Konstruktor-Parameter
   `download_dir` / `session_file` in `ClubDesk`, Default wie bisher.
+  **Umgesetzt 2026-10-25.**
 - **Playwright Sync-API in marimo (per Spike geprüft, 2026-10-23):** marimo
   0.25 führt Zellen in einer laufenden asyncio-Schleife aus. Ein direkter
   Aufruf von `sync_playwright()` scheitert mit „Sync API inside the asyncio

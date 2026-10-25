@@ -34,25 +34,21 @@ def export_efa() -> Path:
         return efa.persons.export()
 
 
-def _export_clubdesk() -> Path:
+def _export_clubdesk(download_dir: Path) -> Path:
 
     from rcbclubdeskexport import ClubDesk
-    from rcbclubdeskexport.config import Config
     from rcbclubdeskexport.contacts import Contacts
 
     directory = project_dir("rcbclubdeskexport")
     env = dotenv_values(directory / ".env")
 
-    # Bis ClubDesk die Pfade als Parameter annimmt (C2 in docs/plan.md):
-    # Downloads nach data/, Session bleibt im ClubDesk-Projekt.
-    Config.DOWNLOAD_DIR = DATA_DIR / "clubdesk"
-    Config.SESSION_FILE = directory / "clubdesk.json"
-    Config.DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
+    # Session bleibt im ClubDesk-Projekt, damit sie mit dessen CLI geteilt wird
     with ClubDesk(
         username=env.get("CLUBDESK_USERNAME"),
         password=env.get("CLUBDESK_PASSWORD"),
         headless=True,
+        download_dir=download_dir,
+        session_file=directory / "clubdesk.json",
     ) as cd:
         cd.login()
 
@@ -63,16 +59,16 @@ def _export_clubdesk() -> Path:
         return contacts.export_csv()
 
 
-def export_clubdesk() -> Path:
+def export_clubdesk(download_dir: Path = DATA_DIR / "clubdesk") -> Path:
     """
-    Exportiert die ClubDesk-Mitglieder über RcbClubdeskExport.
+    Exportiert die ClubDesk-Mitglieder über RcbClubdeskExport nach download_dir.
 
     Läuft in einem eigenen Thread: marimo-Zellen laufen in einer
     asyncio-Schleife, darin verweigert die Playwright-Sync-API den Start.
     """
 
     with ThreadPoolExecutor(max_workers=1) as executor:
-        return executor.submit(_export_clubdesk).result()
+        return executor.submit(_export_clubdesk, download_dir).result()
 
 
 @dataclass

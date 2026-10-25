@@ -133,7 +133,7 @@ Run-Configs: „IDs vergeben produktiv“ und „IDs vergeben lokal“.
 | Projekt | Neu |
 |---|---|
 | RcbEfaExport | `persons.import_file(pfad, mode)`: `persons` + efaCLI-`import` (immer `-updversion=update`) in der bestehenden Sitzung; liefert die Anzahl importierter Datensätze aus „`<n>` records imported“ |
-| RcbClubdeskExport | Download-Pfad als Parameter (C2) |
+| RcbClubdeskExport | Download-Pfad als Parameter (C2) – **erledigt** |
 | RcbCompareTool | – (Phase-1-Importdatei bereits auf `Id\|ExternalId` korrigiert) |
 | RcbMemberSync | Instanzauswahl, Laufverzeichnis, Auswahl je Person, Importdateien je Person, Freigabe, Einspielen, Kontrolle, Log; `assign-ids` als Kommandozeile |
 
