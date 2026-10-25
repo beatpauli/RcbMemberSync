@@ -67,6 +67,7 @@ class ApplyResult:
     run_dir: Path
     instance: Instance
     outcomes: list[ImportOutcome] = field(default_factory=list)
+    before: list[PersonChange] = field(default_factory=list)   # alle Unterschiede vor dem Einspielen
 
     @property
     def failed(self) -> list[ImportOutcome]:
@@ -175,7 +176,7 @@ def apply_changes(
     store_inputs(run_dir, efa_file, clubdesk_file, result)
     files = write_import_files(changes, run_dir)
 
-    apply_result = ApplyResult(run_dir=run_dir, instance=instance)
+    apply_result = ApplyResult(run_dir=run_dir, instance=instance, before=list(result.changes))
 
     if not files:
         return apply_result

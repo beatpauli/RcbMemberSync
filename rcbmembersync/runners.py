@@ -24,10 +24,10 @@ from .run import CLUBDESK_NAME, EFA_BEFORE_NAME, adopt_file
 from .settings import project_dir
 
 
-def export_efa(instance: Instance, run_dir: Path) -> Path:
+def export_efa(instance: Instance, run_dir: Path, name: str = EFA_BEFORE_NAME) -> Path:
     """
     Exportiert die efa-Personen über RcbEfaExport (efaCLI, nur lesend) und
-    verschiebt die Datei als efa_vorher.csv ins Laufverzeichnis.
+    verschiebt die Datei als efa_vorher.csv (bzw. name) ins Laufverzeichnis.
 
     VPN nur für die produktive Instanz. Die Konfiguration kommt aus der .env
     von RcbEfaExport (dort beim Import von rcbefaexport.config geladen).
@@ -39,7 +39,7 @@ def export_efa(instance: Instance, run_dir: Path) -> Path:
     with EfaClient(Config.from_env(instance)) as efa:
         exported = efa.persons.export()
 
-    return adopt_file(exported, run_dir, EFA_BEFORE_NAME, move=True)
+    return adopt_file(exported, run_dir, name, move=True)
 
 
 def _export_clubdesk(download_dir: Path) -> Path:

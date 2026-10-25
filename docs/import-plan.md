@@ -272,5 +272,19 @@ versioniert).
         Rohausgabe von efaCLI (`import_file` liefert nur die Anzahl). Der
         Startbefehl der Sitzung (enthält das Passwort) und `quit` werden
         nicht protokolliert.
-- [ ] GUI Teil 4: Kontrolle (Export + Vergleich danach)
+- [x] GUI Teil 4: Kontrolle (`rcbmembersync/control.py`, getestet mit
+      Ersatz-Export; den ersten echten Lauf macht der Benutzer).
+      - Button „Kontroll-Export und Abgleich“ erscheint nach dem Einspielen.
+        efa wird aus der Instanz exportiert, in die eingespielt wurde
+        (`efa_nachher.csv`), und mit der `clubdesk.csv` des Laufs verglichen
+        (`vergleich_nachher.csv`). Wiederholbar, die Dateien werden ersetzt.
+      - Prüfung je eingespielter Person (auch bei Import-Fehler): Steht sie
+        im Vergleich danach noch mit einem der **importierten** Attribute, ist
+        sie „NICHT angekommen“ (mit Wert in efa und erwartetem Wert); ist sie
+        noch „neu“, fehlt sie in efa. Einträge „von Hand“ (`InvalidFrom`)
+        zählen nicht als Fehler.
+      - Unterschiede bei Personen, die vor dem Einspielen nicht im Vergleich
+        standen, werden als unerwartet gemeldet (z.B. inzwischen geändert).
+      - Übrige Unterschiede von vorher (nicht ausgewählt / „von Hand“) werden
+        nur gezählt.
 - [ ] RcbMemberSync: `assign-ids` als Kommandozeile + Run-Configs

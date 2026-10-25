@@ -17,6 +17,8 @@ from rcbefaexport.config import Instance
 EFA_BEFORE_NAME = "efa_vorher.csv"
 CLUBDESK_NAME = "clubdesk.csv"
 COMPARISON_NAME = "vergleich.csv"
+EFA_AFTER_NAME = "efa_nachher.csv"
+COMPARISON_AFTER_NAME = "vergleich_nachher.csv"
 
 
 def create_run_dir(base_dir: Path, instance: Instance, now: datetime | None = None) -> Path:
@@ -63,10 +65,10 @@ def adopt_file(source: Path, run_dir: Path, name: str, move: bool = False) -> Pa
     return target
 
 
-def write_comparison(result: ComparisonResult, run_dir: Path) -> Path:
-    """Ergebnis des Vergleichs (alle Unterschiede) als vergleich.csv ablegen."""
+def write_comparison(result: ComparisonResult, run_dir: Path, name: str = COMPARISON_NAME) -> Path:
+    """Ergebnis des Vergleichs (alle Unterschiede) als vergleich.csv (bzw. name) ablegen."""
 
-    path = run_dir / COMPARISON_NAME
+    path = run_dir / name
     write_change_report(result, path)
     return path
 

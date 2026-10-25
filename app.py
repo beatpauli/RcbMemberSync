@@ -12,12 +12,14 @@ def _():
 
     from rcbefaexport.config import Instance
 
-    from rcbmembersync.apply import already_applied, apply_changes
+    from rcbmembersync.apply import ApplyResult, already_applied, apply_changes
     from rcbmembersync.comparison_table import build_table
+    from rcbmembersync.control import run_control
     from rcbmembersync.run import create_run_dir
     from rcbmembersync.runners import compare_files, export_clubdesk, export_efa
     from rcbmembersync.settings import BASE_DIR, DEMO_DIR, OUTPUT_DIR, check_environment
     return (
+        ApplyResult,
         BASE_DIR,
         DEMO_DIR,
         Instance,
@@ -32,6 +34,7 @@ def _():
         export_clubdesk,
         export_efa,
         mo,
+        run_control,
     )
 
 
@@ -55,10 +58,15 @@ def _(mo):
     # Ergebnis des Einspielens (ApplyResult oder Fehlermeldung); nur die
     # Anzeige- und Freigabe-Zellen lesen es, nie die Einspiel-Zelle selbst
     get_apply_result, set_apply_result = mo.state(None)
+
+    # Ergebnis der Kontrolle (ControlResult oder Fehlermeldung); beim
+    # Einspielen zurückgesetzt
+    get_control_result, set_control_result = mo.state(None)
     return (
         get_apply_result,
         get_clubdesk_message,
         get_clubdesk_path,
+        get_control_result,
         get_efa_message,
         get_efa_path,
         get_run_dir,
@@ -66,6 +74,7 @@ def _(mo):
         set_apply_result,
         set_clubdesk_message,
         set_clubdesk_path,
+        set_control_result,
         set_efa_message,
         set_efa_path,
         set_run_dir,
@@ -582,12 +591,14 @@ def _(
     ready,
     selected_changes,
     set_apply_result,
+    set_control_result,
 ):
     # Einziger Ort, an dem nach efa eingespielt wird – nur nach Klick und
     # Freigabe. Liest keinen State, den sie selbst setzt; ein zweiter
     # Durchlauf scheitert zudem an der Sperre im Laufverzeichnis (efacli.log).
     mo.stop(not apply_button.value or not ready)
 
+    set_control_result(None)
     try:
         with mo.status.spinner(title="Einspielen nach efa läuft …"):
             _result = apply_changes(instance, ensure_run_dir(), efa_file, clubdesk_file, data.result, selected_changes)
@@ -656,14 +667,135 @@ def _(get_apply_result, mo):
                     style_cell=_style_result,
                 ),
                 mo.md(
-                    "„importiert“ heisst noch nicht, dass jeder Wert in efa angekommen ist. "
-                    "Zur Kontrolle efa neu exportieren und abgleichen: Erwartet werden nur noch "
-                    "die nicht ausgewählten Personen und die Einträge „von Hand“."
+                    "„importiert“ heisst noch nicht, dass jeder Wert in efa angekommen ist – "
+                    "das zeigt die Kontrolle unten."
                 ),
             ]
         )
 
     _output
+    return
+
+
+@app.cell
+def _(ApplyResult, get_apply_result, mo):
+    from rcbmembersync.apply import INSTANCE_LABELS as _INSTANCES
+
+    _result = get_apply_result()
+    mo.stop(not isinstance(_result, ApplyResult) or not _result.outcomes)
+
+    control_button = mo.ui.run_button(label="Kontroll-Export und Abgleich", kind="success")
+
+    mo.vstack(
+        [
+            mo.md("## Kontrolle"),
+            mo.md(
+                f"efa ({_INSTANCES[_result.instance]}) wird erneut exportiert (nur lesend) und mit der "
+                f"ClubDesk-Datei des Laufs verglichen. Ergebnis im Laufverzeichnis `{_result.run_dir}`: "
+                "`efa_nachher.csv`, `vergleich_nachher.csv`. Kann wiederholt werden."
+            ),
+            control_button,
+        ]
+    )
+    return (control_button,)
+
+
+@app.cell
+def _(control_button, get_apply_result, mo, run_control, set_control_result):
+    # Kontroll-Export nur nach Klick; liest keinen State, den sie selbst setzt
+    mo.stop(not control_button.value)
+
+    _apply_result = get_apply_result()
+    _title = (
+        "Kontroll-Export läuft (VPN, efaCLI) …"
+        if _apply_result.instance.value == "remote"
+        else "Kontroll-Export läuft (lokale Testinstanz) …"
+    )
+    try:
+        with mo.status.spinner(title=_title):
+            set_control_result(run_control(_apply_result))
+    except Exception as _e:
+        set_control_result(f"{type(_e).__name__}: {_e}")
+    return
+
+
+@app.cell
+def _(get_control_result, mo):
+    from rcbmembersync.comparison_table import CASE_LABELS as _CONTROL_CASES
+
+    _control = get_control_result()
+    mo.stop(_control is None)
+
+    if isinstance(_control, str):
+        _view = mo.callout(mo.md(f"**Kontrolle fehlgeschlagen:** {_control}"), kind="danger")
+    else:
+        _check = _control.check
+        _not_arrived = _check.not_arrived
+        _count = len(_check.checks)
+
+        _rows = [
+            {
+                "Kontrolle": "angekommen" if _c.arrived else "NICHT angekommen",
+                "Import": "ok" if _c.outcome.ok else "FEHLER",
+                "Fall": _CONTROL_CASES[_c.outcome.file.change.change_type],
+                "Vorname": _c.outcome.file.change.first_name,
+                "Nachname": _c.outcome.file.change.last_name,
+                "Meldung": _c.message,
+                "ClubDeskId": _c.outcome.file.change.external_id,
+            }
+            for _c in _check.checks
+        ]
+
+
+        def _style_control(row_id, column, value):
+            return {} if _rows[int(row_id)]["Kontrolle"] == "angekommen" else {"color": "#cc0000", "fontWeight": "bold"}
+
+
+        _items = [
+            mo.md("## Ergebnis Kontrolle"),
+            mo.callout(
+                mo.md(
+                    f"**{_count - len(_not_arrived)} von {_count} eingespielten Personen: alle Werte angekommen.**"
+                    + (f" **{len(_not_arrived)} nicht (vollständig) angekommen**, siehe Tabelle." if _not_arrived else "")
+                ),
+                kind="warn" if _not_arrived else "success",
+            ),
+            mo.ui.table(
+                _rows,
+                selection=None,
+                pagination=False,
+                show_column_summaries=False,
+                show_data_types=False,
+                style_cell=_style_control,
+            ),
+        ]
+
+        if _check.unexpected:
+            _items.append(
+                mo.callout(
+                    mo.md(
+                        "**Unerwartete Unterschiede** bei Personen, die vor dem Einspielen nicht auffielen "
+                        "(z.B. inzwischen in efa oder ClubDesk geändert):\n\n"
+                        + "\n".join(
+                            f"- {_CONTROL_CASES[_u.change_type]}: {_u.first_name} {_u.last_name} "
+                            f"({_u.external_id})"
+                            for _u in _check.unexpected
+                        )
+                    ),
+                    kind="warn",
+                )
+            )
+
+        _items.append(
+            mo.md(
+                f"Weiterhin offen (nicht ausgewählt oder „von Hand“): {_check.remaining} Personen. "
+                f"Details: `{_control.comparison_file}`. Für weitere Änderungen efa neu exportieren – "
+                "das beginnt einen neuen Lauf."
+            )
+        )
+        _view = mo.vstack(_items)
+
+    _view
     return
 
 
