@@ -69,14 +69,16 @@ def _export_clubdesk(download_dir: Path) -> Path:
 
         contacts = Contacts(cd)
         contacts.open()
-        contacts.open_members()
+        # alle Kontakte, nicht nur Mitglieder: auch Kursteilnehmer ohne
+        # Beitritt sollen im Abgleich erscheinen (wie der frühere Export)
+        contacts.open_all_contacts()
 
         return contacts.export_csv()
 
 
 def export_clubdesk(run_dir: Path) -> Path:
     """
-    Exportiert die ClubDesk-Mitglieder über RcbClubdeskExport als
+    Exportiert alle ClubDesk-Kontakte über RcbClubdeskExport als
     clubdesk.csv ins Laufverzeichnis.
 
     Läuft in einem eigenen Prozess (spawn):
