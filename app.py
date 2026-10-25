@@ -12,6 +12,7 @@ def _():
 
     from rcbefaexport.config import Instance
 
+    from rcbmembersync.apply import already_applied, apply_changes
     from rcbmembersync.comparison_table import build_table
     from rcbmembersync.run import create_run_dir
     from rcbmembersync.runners import compare_files, export_clubdesk, export_efa
@@ -22,6 +23,8 @@ def _():
         Instance,
         OUTPUT_DIR,
         Path,
+        already_applied,
+        apply_changes,
         build_table,
         check_environment,
         compare_files,
@@ -48,13 +51,19 @@ def _(mo):
     # zweites Mal.
     run_holder = {"dir": None}
     get_run_dir, set_run_dir = mo.state(None)
+
+    # Ergebnis des Einspielens (ApplyResult oder Fehlermeldung); nur die
+    # Anzeige- und Freigabe-Zellen lesen es, nie die Einspiel-Zelle selbst
+    get_apply_result, set_apply_result = mo.state(None)
     return (
+        get_apply_result,
         get_clubdesk_message,
         get_clubdesk_path,
         get_efa_message,
         get_efa_path,
         get_run_dir,
         run_holder,
+        set_apply_result,
         set_clubdesk_message,
         set_clubdesk_path,
         set_efa_message,
@@ -183,10 +192,17 @@ def _(get_clubdesk_path, get_efa_path, mo, set_clubdesk_path, set_efa_path):
 
 
 @app.cell
-def _(OUTPUT_DIR, create_run_dir, instance, run_holder, set_run_dir):
-    def ensure_run_dir():
-        """Laufverzeichnis des aktuellen Laufs, beim ersten Aufruf angelegt."""
-        if run_holder["dir"] is None:
+def _(OUTPUT_DIR, already_applied, create_run_dir, instance, run_holder, set_run_dir):
+    def ensure_run_dir(new_if_applied=False):
+        """
+        Laufverzeichnis des aktuellen Laufs, beim ersten Aufruf angelegt.
+
+        new_if_applied: Exporte nach dem Einspielen beginnen einen neuen
+        Lauf. Die Einspiel-Zelle nutzt das nie – ein zweiter Durchlauf mit
+        noch gedrücktem Button würde sonst in einem neuen Lauf erneut
+        einspielen.
+        """
+        if run_holder["dir"] is None or (new_if_applied and already_applied(run_holder["dir"])):
             run_holder["dir"] = create_run_dir(OUTPUT_DIR, instance)
             set_run_dir(run_holder["dir"])   # nur für die Anzeige
         return run_holder["dir"]
@@ -208,7 +224,7 @@ def _(
     _title = "efa-Export läuft (VPN, efaCLI) …" if instance.value == "remote" else "efa-Export läuft (lokale Testinstanz) …"
     try:
         with mo.status.spinner(title=_title):
-            _file = export_efa(instance, ensure_run_dir())
+            _file = export_efa(instance, ensure_run_dir(new_if_applied=True))
         set_efa_path(str(_file))
         set_efa_message(("success", f"Export erstellt: {_file.name}"))
     except Exception as _e:
@@ -229,7 +245,7 @@ def _(
 
     try:
         with mo.status.spinner(title="ClubDesk-Export läuft …"):
-            _file = export_clubdesk(ensure_run_dir())
+            _file = export_clubdesk(ensure_run_dir(new_if_applied=True))
         set_clubdesk_path(str(_file))
         set_clubdesk_message(("success", f"Export erstellt: {_file.name}"))
     except Exception as _e:
@@ -275,22 +291,22 @@ def _(
 
 @app.cell
 def _(Path, compare_files, get_clubdesk_path, get_efa_path, mo):
-    _efa_file = Path(get_efa_path().strip().strip('"'))
-    _clubdesk_file = Path(get_clubdesk_path().strip().strip('"'))
+    efa_file = Path(get_efa_path().strip().strip('"'))
+    clubdesk_file = Path(get_clubdesk_path().strip().strip('"'))
 
     mo.stop(
         not get_efa_path().strip() or not get_clubdesk_path().strip(),
         mo.callout("Sobald beide Dateien definiert sind, erscheint hier die Datentabelle.", kind="neutral"),
     )
 
-    _missing = [str(f) for f in (_efa_file, _clubdesk_file) if not f.is_file()]
+    _missing = [str(f) for f in (efa_file, clubdesk_file) if not f.is_file()]
     mo.stop(bool(_missing), mo.callout(f"Datei nicht gefunden: {', '.join(_missing)}", kind="danger"))
 
     try:
-        data = compare_files(_efa_file, _clubdesk_file)
+        data = compare_files(efa_file, clubdesk_file)
     except Exception as _e:
         mo.stop(True, mo.callout(f"Dateien konnten nicht gelesen werden: {_e}", kind="danger"))
-    return (data,)
+    return clubdesk_file, data, efa_file
 
 
 @app.cell
@@ -440,6 +456,215 @@ def _(COLUMN_EXTERNAL_ID, data_table, mo, table):
         ]
     )
     return (selected_changes,)
+
+
+@app.cell
+def _(
+    already_applied,
+    clubdesk_file,
+    efa_file,
+    get_apply_result,
+    instance,
+    mo,
+    run_holder,
+    selected_changes,
+    table,
+):
+    from rcbcomparetool.comparator import ChangeType as _ChangeType
+
+    from rcbmembersync.apply import CONFIRM_PRODUCTIVE, INSTANCE_LABELS, is_demo_file
+    from rcbmembersync.comparison_table import TRANSFER_MANUAL
+
+    # Nach dem Einspielen neu aufbauen: Formular zurücksetzen, Sperre anzeigen
+    get_apply_result()
+
+    _heading = mo.md("## Freigabe und Einspielen")
+    _run_dir = run_holder["dir"]
+
+    mo.stop(
+        is_demo_file(efa_file) or is_demo_file(clubdesk_file),
+        mo.vstack([_heading, mo.callout("Demodaten werden nicht nach efa eingespielt.", kind="neutral")]),
+    )
+    mo.stop(
+        already_applied(_run_dir),
+        mo.vstack([
+            _heading,
+            mo.callout(
+                f"Der Lauf `{_run_dir.name if _run_dir else ''}` ist eingespielt. Für ein weiteres "
+                "Einspielen efa (und bei Bedarf ClubDesk) neu exportieren – das beginnt einen neuen Lauf.",
+                kind="neutral",
+            ),
+        ]),
+    )
+    mo.stop(
+        not selected_changes,
+        mo.vstack([_heading, mo.callout("Keine Person zum Import ausgewählt.", kind="neutral")]),
+    )
+
+    _new = sum(1 for _c in selected_changes if _c.change_type is _ChangeType.NEW)
+    _changed = len(selected_changes) - _new
+    _manual = sum(1 for _row in table.rows if TRANSFER_MANUAL in _row.transfer)
+    _productive = instance.value == "remote"
+
+    _instance_info = mo.callout(
+        mo.md(f"### Instanz: {INSTANCE_LABELS[instance].upper() if _productive else INSTANCE_LABELS[instance]}"),
+        kind="danger" if _productive else "info",
+    )
+
+    _summary = mo.md(
+        "\n".join(
+            [
+                f"- **{len(selected_changes)} Personen** werden eingespielt: {_new} neu, {_changed} geändert",
+                f"- Von Hand in efa nachzuführen (Spalte „Übernahme“): {_manual} Personen – "
+                "werden nicht eingespielt",
+                f"- efa-Datei: `{efa_file}`",
+                f"- ClubDesk-Datei: `{clubdesk_file}`",
+                f"- Laufverzeichnis: `{_run_dir}`" if _run_dir else "- Laufverzeichnis: _wird beim Einspielen angelegt_",
+            ]
+        )
+    )
+
+    _items = [_heading, _instance_info, _summary]
+
+    # Hinweis, falls die efa-Datei dem Namen nach von der anderen Instanz stammt
+    _efa_is_local = "_LOKAL" in str(efa_file)
+    if _efa_is_local == _productive:
+        _items.append(
+            mo.callout(
+                f"Die efa-Datei stammt dem Namen nach von der "
+                f"{'lokalen Testinstanz' if _efa_is_local else 'produktiven Instanz'}, eingespielt wird "
+                f"aber in die Instanz „{INSTANCE_LABELS[instance]}“. Bitte prüfen.",
+                kind="warn",
+            )
+        )
+
+    confirm_checkbox = mo.ui.checkbox(label="Ich habe die Auswahl geprüft und gebe das Einspielen frei.")
+    confirm_text = (
+        mo.ui.text(label=f"Zur Bestätigung „{CONFIRM_PRODUCTIVE}“ eintippen:", placeholder=CONFIRM_PRODUCTIVE)
+        if _productive
+        else None
+    )
+
+    _items.append(confirm_checkbox)
+    if confirm_text is not None:
+        _items.append(confirm_text)
+
+    mo.vstack(_items)
+    return confirm_checkbox, confirm_text
+
+
+@app.cell
+def _(confirm_checkbox, confirm_text, instance, mo):
+    from rcbmembersync.apply import confirmed
+
+    ready = confirmed(instance, confirm_checkbox.value, confirm_text.value if confirm_text is not None else "")
+
+    apply_button = mo.ui.run_button(label="In efa einspielen", kind="danger", disabled=not ready)
+
+    mo.hstack(
+        [apply_button, mo.md("" if ready else "_Erst nach der Freigabe aktiv._")],
+        justify="start",
+        align="center",
+    )
+    return apply_button, ready
+
+
+@app.cell
+def _(
+    apply_button,
+    apply_changes,
+    clubdesk_file,
+    data,
+    efa_file,
+    ensure_run_dir,
+    instance,
+    mo,
+    ready,
+    selected_changes,
+    set_apply_result,
+):
+    # Einziger Ort, an dem nach efa eingespielt wird – nur nach Klick und
+    # Freigabe. Liest keinen State, den sie selbst setzt; ein zweiter
+    # Durchlauf scheitert zudem an der Sperre im Laufverzeichnis (efacli.log).
+    mo.stop(not apply_button.value or not ready)
+
+    try:
+        with mo.status.spinner(title="Einspielen nach efa läuft …"):
+            _result = apply_changes(instance, ensure_run_dir(), efa_file, clubdesk_file, data.result, selected_changes)
+        set_apply_result(_result)
+    except Exception as _e:
+        set_apply_result(f"{type(_e).__name__}: {_e}")
+    return
+
+
+@app.cell
+def _(get_apply_result, mo):
+    from rcbmembersync.apply import EFACLI_LOG_NAME, INSTANCE_LABELS as _LABELS
+    from rcbmembersync.comparison_table import CASE_LABELS as _CASES
+
+    _result = get_apply_result()
+    mo.stop(_result is None)
+
+    if isinstance(_result, str):
+        _output = mo.callout(
+            mo.md(
+                f"**Einspielen abgebrochen:** {_result}\n\n"
+                "Kam die efaCLI-Verbindung nicht zustande, wurde nichts eingespielt und der Lauf "
+                f"kann wiederholt werden. Sonst zeigt `{EFACLI_LOG_NAME}` im Laufverzeichnis den Stand."
+            ),
+            kind="danger",
+        )
+    else:
+        _failed = _result.failed
+        _ok = len(_result.outcomes) - len(_failed)
+
+        _rows = [
+            {
+                "Ergebnis": "ok" if _o.ok else "FEHLER",
+                "Fall": _CASES[_o.file.change.change_type],
+                "Vorname": _o.file.change.first_name,
+                "Nachname": _o.file.change.last_name,
+                "Meldung": _o.message,
+                "Datei": _o.file.path.name,
+                "ClubDeskId": _o.file.change.external_id,
+            }
+            for _o in _result.outcomes
+        ]
+
+
+        def _style_result(row_id, column, value):
+            return {} if _rows[int(row_id)]["Ergebnis"] == "ok" else {"color": "#cc0000", "fontWeight": "bold"}
+
+
+        _output = mo.vstack(
+            [
+                mo.md(f"## Ergebnis Einspielen ({_LABELS[_result.instance]})"),
+                mo.callout(
+                    mo.md(
+                        f"**{_ok} von {len(_result.outcomes)} Personen eingespielt.**"
+                        + (f" **{len(_failed)} fehlgeschlagen**, Meldung in der Tabelle." if _failed else "")
+                        + f"\n\nProtokoll: `{_result.run_dir / EFACLI_LOG_NAME}`"
+                    ),
+                    kind="warn" if _failed else "success",
+                ),
+                mo.ui.table(
+                    _rows,
+                    selection=None,
+                    pagination=False,
+                    show_column_summaries=False,
+                    show_data_types=False,
+                    style_cell=_style_result,
+                ),
+                mo.md(
+                    "„importiert“ heisst noch nicht, dass jeder Wert in efa angekommen ist. "
+                    "Zur Kontrolle efa neu exportieren und abgleichen: Erwartet werden nur noch "
+                    "die nicht ausgewählten Personen und die Einträge „von Hand“."
+                ),
+            ]
+        )
+
+    _output
+    return
 
 
 if __name__ == "__main__":

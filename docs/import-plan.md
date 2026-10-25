@@ -249,6 +249,22 @@ versioniert).
       `InvalidFrom`-Änderung). Vorausgewählt sind alle Personen mit
       Import; angehakte Zeilen „von Hand“ werden ignoriert. Keine
       zusätzlichen Tabellen (Wunsch Benutzer 2026-10-25).
-- [ ] GUI Teil 3: Freigabe, Einspielen, `efacli.log`
+- [x] GUI Teil 3: Freigabe, Einspielen, `efacli.log` (`rcbmembersync/apply.py`,
+      getestet mit Ersatz-Client; den ersten echten Lauf macht der Benutzer).
+      - Freigabe: Zusammenfassung (Instanz, produktiv rot hervorgehoben,
+        Anzahl neu/geändert, „von Hand“, Dateien, Laufverzeichnis), Häkchen,
+        bei produktiv zusätzlich `produktiv` eintippen; erst dann ist
+        „In efa einspielen“ aktiv. Warnung, wenn die efa-Datei dem Namen nach
+        (`_LOKAL`) von der anderen Instanz stammt.
+      - Einspielen: `store_inputs`, Importdateien, eine efaCLI-Sitzung, ein
+        Import je Datei. Erfolg = genau 1 Datensatz importiert; 0 oder eine
+        Ausnahme = Fehler, die übrigen laufen weiter.
+      - `efacli.log`: wird exklusiv angelegt und ist die Sperre – ein Lauf wird
+        nur einmal eingespielt. Kommt die Sitzung nicht zustande (VPN), entsteht
+        kein Log, der Lauf kann wiederholt werden. Exporte nach dem Einspielen
+        beginnen einen neuen Lauf.
+      - Demodaten werden nie eingespielt.
+      - Das Log enthält je Import Modus, Datei und Anzahl, nicht die
+        Rohausgabe von efaCLI (`import_file` liefert nur die Anzahl).
 - [ ] GUI Teil 4: Kontrolle (Export + Vergleich danach)
 - [ ] RcbMemberSync: `assign-ids` als Kommandozeile + Run-Configs

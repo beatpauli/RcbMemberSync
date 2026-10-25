@@ -48,6 +48,7 @@ CASE_LABELS = {
 }
 
 TRANSFER_IMPORT = "Import"
+TRANSFER_MANUAL = "von Hand"
 
 # Reihenfolge der Fälle in der Tabelle; innerhalb eines Falls nach Nach- und
 # Vorname
@@ -98,7 +99,7 @@ def _transfer(change: PersonChange, importable: bool) -> str:
 
     for field_change in change.field_changes:
         if field_change.attribute in NOT_IMPORTABLE:
-            parts.append(f"von Hand: {_invalid_from_task(field_change.old, field_change.new)}")
+            parts.append(f"{TRANSFER_MANUAL}: {_invalid_from_task(field_change.old, field_change.new)}")
 
     return "; ".join(parts)
 
