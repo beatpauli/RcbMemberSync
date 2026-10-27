@@ -71,6 +71,6 @@ def test_store_inputs_writes_all_files(tmp_path):
 
     store_inputs(run_dir, efa_file, clubdesk_file, result)
 
-    assert sorted(p.name for p in run_dir.iterdir()) == ["clubdesk.csv", "efa_vorher.csv", "vergleich.csv"]
+    assert sorted(p.name for p in run_dir.iterdir()) == ["clubdesk.csv", "clubdesk_fehler.csv", "efa_vorher.csv", "vergleich.csv"]
     assert (run_dir / "efa_vorher.csv").read_bytes() == efa_file.read_bytes()
     assert "Muster" in (run_dir / "vergleich.csv").read_text(encoding="utf-8")

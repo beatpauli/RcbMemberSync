@@ -85,7 +85,7 @@ def test_imports_each_person_once_with_its_mode(inputs):
     ]
     assert result.failed == []
     assert {p.name for p in run_dir.iterdir()} == {
-        "efa_vorher.csv", "clubdesk.csv", "vergleich.csv", "import", EFACLI_LOG_NAME,
+        "efa_vorher.csv", "clubdesk.csv", "clubdesk_fehler.csv", "vergleich.csv", "import", EFACLI_LOG_NAME,
     }
 
 

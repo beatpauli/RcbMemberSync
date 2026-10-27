@@ -383,6 +383,7 @@ def _(build_table, data, get_selected_ids, mo, set_selected_ids):
             mo.stat(counts[ChangeType.CHANGED], label="Geändert", bordered=True),
             mo.stat(counts[ChangeType.LEFT], label="Ausgetreten", bordered=True),
             mo.stat(len(data.result.not_comparable), label="Ohne ExternalId", bordered=True),
+            mo.stat(len(data.result.errors), label="Fehler in ClubDesk", bordered=True),
         ],
         justify="start",
     )
@@ -402,6 +403,39 @@ def _(build_table, data, get_selected_ids, mo, set_selected_ids):
 
     for _conflict in data.result.conflicts:
         _items.append(mo.callout(_conflict, kind="warn"))
+
+    # Fehler in ClubDesk (siehe RcbCompareTool docs/clubdesk-pruefung-plan.md):
+    # werden nicht abgeglichen, also weder angelegt noch geändert noch ausgetreten
+    if data.result.errors:
+        _count = len(data.result.errors)
+        _items.append(
+            mo.callout(
+                f"{_count} {'Person' if _count == 1 else 'Personen'} mit Fehler in ClubDesk "
+                f"{'wird' if _count == 1 else 'werden'} nicht abgeglichen. "
+                "In ClubDesk korrigieren und neu abgleichen.",
+                kind="danger",
+            )
+        )
+        _errors = sorted(data.result.errors, key=lambda e: (e.reason, e.person.last_name, e.person.first_name))
+        _items.append(
+            mo.ui.table(
+                [
+                    {
+                        "Nachname": _error.person.last_name,
+                        "Vorname": _error.person.first_name,
+                        "Status": _error.person.status.value,
+                        "Ruderkategorie": _error.person.rowing_category.value,
+                        "Grund": _error.reason,
+                        COLUMN_EXTERNAL_ID: _error.person.external_id or "",
+                    }
+                    for _error in _errors
+                ],
+                selection=None,
+                pagination=False,
+                show_column_summaries=False,
+                show_data_types=False,
+            )
+        )
 
     # Auswahl je Person direkt in der Datentabelle. Vorausgewählt sind alle
     # Personen mit Import – ClubDesk ist führend.
