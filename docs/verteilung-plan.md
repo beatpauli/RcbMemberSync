@@ -160,4 +160,24 @@ weitergeben; `dist/` steht in `.gitignore`.
       **Keine Änderung an den Export-Projekten nötig:** RcbClubdeskExport
       bekommt die Zugangsdaten schon heute als Parameter, RcbEfaExport liest
       die Umgebung (`Config.from_env`).
-- [ ] Build-Skript und Startskript, Probelauf auf einem zweiten Rechner
+- [x] Build-Skript und Startskript: `python -m rcbmembersync.package_build`
+      (`rcbmembersync/package_build.py`, `uv` als Entwicklungsabhängigkeit),
+      in PyCharm über die Run-Config „Paket bauen“.
+      - Abweichend vom Entwurf liegen `rcbmembersync/` als Quellcode und die
+        erfundenen Demodaten (`tests/fixtures/demo`) mit im Paket;
+        `uv sync` installiert RcbMemberSync editierbar, damit `BASE_DIR` der
+        Paketordner ist.
+      - Versionen der Fremdbibliotheken wie in der Entwicklungsumgebung
+        (`constraint-dependencies`), Python wie die venv (3.12).
+      - `.env` aus den beiden Projekt-`.env` zusammengeführt (ohne
+        Auflösung von `${…}`), Ausschlussliste von RcbCompareTool.
+      - Python, Cache und Chromium landen im Paketordner. Nur die
+        Chromium-Shell (`--only-shell`, der Export läuft headless): ca.
+        280 MB statt 720 MB; installiert insgesamt ca. 750 MB. ZIP ca. 15 MB.
+      - Das Build-Skript entfernt die `build/`-Ordner, die setuptools in den
+        Geschwister-Projekten anlegt.
+      - Geprüft auf dem Entwicklungsrechner in einem leeren Ordner:
+        `uv sync --frozen` lädt Python und Pakete, Paketbetrieb erkannt,
+        alle Prüfungen grün, Chromium startet aus `browsers/`. Die GUI über
+        `RcbMemberSync.cmd` hat der Benutzer noch nicht gestartet.
+- [ ] Probelauf auf einem zweiten Rechner (Benutzer)

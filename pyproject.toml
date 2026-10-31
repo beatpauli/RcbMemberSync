@@ -21,6 +21,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+    "uv>=0.13",   # Paket bauen (rcbmembersync.package_build)
 ]
 
 [tool.setuptools.packages.find]
