@@ -12,6 +12,8 @@ Plan, Analyse und Entscheidungen: `docs/plan.md` (Abschnitt „Stand“).
 GUI-Aufbau, Mockup und offene Fragen: `docs/ui-design.md`.
 Änderungen nach efa nachführen (freigegeben 2026-10-25, abgeschlossen
 2026-10-31): `docs/import-plan.md`.
+Weitergabe als Paket, VPN ohne Windows-Einrichtung (freigegeben 2026-10-31):
+`docs/verteilung-plan.md` – **hier weitermachen**.
 
 ## Regeln
 
@@ -35,8 +37,9 @@ GUI-Aufbau, Mockup und offene Fragen: `docs/ui-design.md`.
   deshalb nicht.
 - Export-Zellen (und später Einspielen) dürfen nicht von einem State
   abhängen, den sie selbst setzen – sonst laufen sie ein zweites Mal.
-- Zugangsdaten bleiben in der `.env` des jeweiligen Projekts; nie Werte in der
-  UI anzeigen oder loggen.
+- Zugangsdaten bleiben in der `.env` des jeweiligen Projekts, im Paket in einer
+  `.env` im Paketordner (`docs/verteilung-plan.md`); nie Werte in der UI
+  anzeigen oder loggen.
 - `app.py` dünn halten, Logik in `rcbmembersync/` (ohne marimo testbar).
 - Tests schreiben Ausgaben nur nach `tmp_path`.
 - Änderungen an den Geschwister-Projekten nur als kleine, separate Schritte
