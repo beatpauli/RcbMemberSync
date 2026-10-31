@@ -10,8 +10,8 @@ installiert über `requirements-dev.txt`):
 
 Plan, Analyse und Entscheidungen: `docs/plan.md` (Abschnitt „Stand“).
 GUI-Aufbau, Mockup und offene Fragen: `docs/ui-design.md`.
-Änderungen nach efa nachführen (freigegeben 2026-10-25): `docs/import-plan.md`
-– **hier weitermachen**.
+Änderungen nach efa nachführen (freigegeben 2026-10-25, abgeschlossen
+2026-10-31): `docs/import-plan.md`.
 
 ## Regeln
 

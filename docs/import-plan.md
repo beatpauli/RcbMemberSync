@@ -64,8 +64,8 @@ Weitere Hinweise aus der Doku:
   Shell, Erfolg muss dort aus der Ausgabe erkannt werden.
 - Das Passwort kann statt auf der Kommandozeile in `.efacred` im
   Heimatverzeichnis stehen. Heute übergibt RcbEfaExport es auf der
-  Kommandozeile (in der Prozessliste sichtbar). Das ist eine mögliche Verbesserung,
-  aber unabhängig vom Import.
+  Kommandozeile (in der Prozessliste sichtbar). Entschieden (2026-10-31): Das
+  bleibt so, `.efacred` wird nicht verwendet.
 
 ## Laufverzeichnis
 
@@ -176,10 +176,12 @@ Neu offen:
    Platzhalter für Fahrten ohne eigenen Personeneintrag („Gast 1–9“,
    „Jugendsport 1–9“, „Schulsport 1–9“, „Kantonsschule Wahlsport_1–9“). Sie
    werden nie Mitglieder, haben keinen Namenstreffer in ClubDesk (geprüft
-   2026-10-25), erhalten in Phase 1 keine `ExternalId` und werden in Phase 2
-   nie angefasst → keine Änderung am Compare-Tool, keine Doppeleintrag-Prüfung
-   nötig.
-   Offen: Lokale Kopie vor den Abschlusstests mit produktiven Daten auffrischen?
+   2026-10-25) und erhalten in Phase 1 keine `ExternalId`. Seit 2026-10-27
+   stehen sie auf der Ausschlussliste des Compare-Tools
+   (`RcbCompareTool/docs/ausschlussliste-plan.md`) und werden in Phase 1 und
+   Phase 2 ganz übergangen. Eine Doppeleintrag-Prüfung ist nicht nötig.
+   Entschieden (2026-10-31): Die lokale Kopie wird nicht mit produktiven Daten
+   aufgefrischt.
 
 ## Testergebnisse lokale Instanz (2026-10-25)
 
@@ -307,3 +309,5 @@ versioniert).
       - Die Importdatei liegt vor der Freigabe vor und kann geprüft werden.
       - Kontrolle: Im Kontroll-Export muss jede eingespielte Person die
         erwartete ExternalId tragen; sonst Meldung und Exit-Code 1.
+- [x] Erstes echtes Einspielen produktiv durch den Benutzer (gemeldet
+      2026-10-31).
