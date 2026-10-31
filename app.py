@@ -17,13 +17,14 @@ def _():
     from rcbmembersync.control import run_control
     from rcbmembersync.run import create_run_dir
     from rcbmembersync.runners import compare_files, export_clubdesk, export_efa
-    from rcbmembersync.settings import BASE_DIR, DEMO_DIR, OUTPUT_DIR, check_environment
+    from rcbmembersync.settings import BASE_DIR, DEMO_DIR, OUTPUT_DIR, PACKAGED, check_environment
     return (
         ApplyResult,
         BASE_DIR,
         DEMO_DIR,
         Instance,
         OUTPUT_DIR,
+        PACKAGED,
         Path,
         already_applied,
         apply_changes,
@@ -158,14 +159,15 @@ def _(DEMO_DIR, demo_button, mo, set_clubdesk_path, set_efa_path):
 
 
 @app.cell
-def _(BASE_DIR, mo, set_clubdesk_path, set_efa_path):
+def _(BASE_DIR, PACKAGED, mo, set_clubdesk_path, set_efa_path):
     efa_export_button = mo.ui.run_button(label="Export", kind="success")
     clubdesk_export_button = mo.ui.run_button(label="Export", kind="success")
 
 
     def _browser(setter):
         return mo.ui.file_browser(
-            initial_path=BASE_DIR.parent,
+            # Entwicklung: Ordner mit allen Geschwister-Projekten; Paket: Paketordner
+            initial_path=BASE_DIR if PACKAGED else BASE_DIR.parent,
             filetypes=[".csv"],
             multiple=False,
             restrict_navigation=False,

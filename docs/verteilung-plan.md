@@ -149,5 +149,15 @@ weitergeben; `dist/` steht in `.gitignore`.
       Export erfolgreich. Das NAT-Risiko trat auf dem Entwicklungsrechner
       nicht auf; ob dort früher schon etwas an der Registry eingestellt
       wurde, zeigt erst der Probelauf auf einem zweiten Rechner.
-- [ ] Paketmodus in RcbMemberSync, `.env` von aussen in den Export-Projekten
+- [x] Paketmodus in RcbMemberSync (`settings.py`): Liegt eine `.env` direkt
+      im Paketordner, gilt der Paketbetrieb (`PACKAGED`). Die `.env` wird
+      dann mit `override` in die Umgebung geladen; Ausschlussliste und
+      ClubDesk-Session liegen unter `data/` im Paketordner (`env_file`,
+      `exclusion_file`, `clubdesk_session_file`). Die Prüfung zeigt im Paket
+      nur die eine `.env` und prüft in beiden Betriebsarten `EFA_CLI` und
+      Java (`java` im `PATH`, so findet `runefa.bat` es). Dateiauswahl
+      startet im Paket im Paketordner.
+      **Keine Änderung an den Export-Projekten nötig:** RcbClubdeskExport
+      bekommt die Zugangsdaten schon heute als Parameter, RcbEfaExport liest
+      die Umgebung (`Config.from_env`).
 - [ ] Build-Skript und Startskript, Probelauf auf einem zweiten Rechner

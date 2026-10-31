@@ -19,12 +19,10 @@ from rcbcomparetool.comparator import ComparisonResult, Comparator
 from rcbcomparetool.efa import EfaReader
 from rcbcomparetool.exclusion import read_exclusion_list
 
-from .settings import exclusion_file
-
 from rcbefaexport.config import Instance
 
 from .run import CLUBDESK_NAME, EFA_BEFORE_NAME, adopt_file
-from .settings import project_dir
+from .settings import clubdesk_session_file, env_file, exclusion_file
 
 
 def export_efa(instance: Instance, run_dir: Path, name: str = EFA_BEFORE_NAME) -> Path:
@@ -33,7 +31,8 @@ def export_efa(instance: Instance, run_dir: Path, name: str = EFA_BEFORE_NAME) -
     verschiebt die Datei als efa_vorher.csv (bzw. name) ins Laufverzeichnis.
 
     VPN nur für die produktive Instanz. Die Konfiguration kommt aus der .env
-    von RcbEfaExport (dort beim Import von rcbefaexport.config geladen).
+    von RcbEfaExport (dort beim Import von rcbefaexport.config geladen), im
+    Paket aus der gemeinsamen .env (geladen in settings).
     """
 
     from rcbefaexport import EfaClient
@@ -57,16 +56,14 @@ def _export_clubdesk(download_dir: Path) -> Path:
     from rcbclubdeskexport import ClubDesk
     from rcbclubdeskexport.contacts import Contacts
 
-    directory = project_dir("rcbclubdeskexport")
-    env = dotenv_values(directory / ".env")
+    env = dotenv_values(env_file("rcbclubdeskexport"))
 
-    # Session bleibt im ClubDesk-Projekt, damit sie mit dessen CLI geteilt wird
     with ClubDesk(
         username=env.get("CLUBDESK_USERNAME"),
         password=env.get("CLUBDESK_PASSWORD"),
         headless=True,
         download_dir=download_dir,
-        session_file=directory / "clubdesk.json",
+        session_file=clubdesk_session_file(),
     ) as cd:
         cd.login()
 
