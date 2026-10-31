@@ -17,6 +17,9 @@ from dotenv import dotenv_values
 from rcbcomparetool.clubdesk import ClubDeskReader
 from rcbcomparetool.comparator import ComparisonResult, Comparator
 from rcbcomparetool.efa import EfaReader
+from rcbcomparetool.exclusion import read_exclusion_list
+
+from .settings import exclusion_file
 
 from rcbefaexport.config import Instance
 
@@ -123,7 +126,11 @@ def compare_files(efa_file: Path, clubdesk_file: Path) -> ComparisonData:
     }
 
     return ComparisonData(
-        result=Comparator().compare(efa_records, clubdesk_persons),
+        result=Comparator().compare(
+            efa_records,
+            clubdesk_persons,
+            excluded_ids=read_exclusion_list(exclusion_file(efa_file)),
+        ),
         efa_rows={record.person.efa_id: record.row for record in efa_records},
         clubdesk_ids=clubdesk_ids,
     )

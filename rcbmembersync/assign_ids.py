@@ -24,6 +24,7 @@ from typing import Any
 
 from rcbcomparetool.clubdesk import ClubDeskReader
 from rcbcomparetool.efa import EfaReader
+from rcbcomparetool.exclusion import read_exclusion_list
 from rcbcomparetool.matcher import (
     Match,
     MatchResult,
@@ -40,7 +41,7 @@ from rcbefaexport.persons import ImportMode
 from .apply import EFACLI_LOG_NAME, INSTANCE_LABELS, _default_client, efacli_log
 from .run import CLUBDESK_NAME, EFA_AFTER_NAME, adopt_file, create_run_dir
 from .runners import export_clubdesk, export_efa
-from .settings import OUTPUT_DIR
+from .settings import OUTPUT_DIR, exclusion_file
 
 
 IDS_IMPORT_NAME = "ids_import.csv"
@@ -74,10 +75,14 @@ class IdPlan:
     conflicts: list[Conflict] = field(default_factory=list)  # nie eingespielt
 
 
-def plan_ids(efa_persons: list[Person], clubdesk_persons: list[Person]) -> IdPlan:
+def plan_ids(
+    efa_persons: list[Person],
+    clubdesk_persons: list[Person],
+    excluded_ids: frozenset[str] = frozenset(),
+) -> IdPlan:
     """Namens-Matching und Aufteilung der Treffer: einspielen / schon gesetzt / Konflikt."""
 
-    plan = IdPlan(match_result=PersonMatcher().match(efa_persons, clubdesk_persons))
+    plan = IdPlan(match_result=PersonMatcher().match(efa_persons, clubdesk_persons, excluded_ids))
 
     # ExternalId -> efa-Personen, die sie schon tragen
     assigned: dict[str, list[Person]] = {}
@@ -121,6 +126,7 @@ def summary_lines(plan: IdPlan, instance: Instance, run_dir: Path) -> list[str]:
         f"  Konflikte (nicht eingespielt):  {len(plan.conflicts)}",
         f"Mehrdeutigkeiten (nie eingespielt): {len(result.ambiguities)}",
         f"efa ohne ClubDesk-Treffer:     {len(result.unmatched_efa)}  ({UNMATCHED_EFA_NAME})",
+        f"efa-Gäste (Ausschlussliste):   {len(result.excluded)}",
         f"ClubDesk ohne efa-Treffer:     {len(unmatched_clubdesk)}  ({UNMATCHED_CLUBDESK_NAME})",
     ]
 
@@ -187,7 +193,11 @@ def assign_ids(
     else:
         clubdesk_file = adopt_file(clubdesk_file, run_dir, CLUBDESK_NAME)
 
-    plan = plan_ids(EfaReader().read(efa_file), ClubDeskReader().read(clubdesk_file))
+    plan = plan_ids(
+        EfaReader().read(efa_file),
+        ClubDeskReader().read(clubdesk_file),
+        read_exclusion_list(exclusion_file(efa_file)),
+    )
 
     import_file = run_dir / "import" / IDS_IMPORT_NAME
     write_import_file(MatchResult(matches=plan.to_import), import_file)

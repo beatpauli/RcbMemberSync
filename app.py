@@ -384,6 +384,7 @@ def _(build_table, data, get_selected_ids, mo, set_selected_ids):
             mo.stat(counts[ChangeType.LEFT], label="Ausgetreten", bordered=True),
             mo.stat(len(data.result.not_comparable), label="Ohne ExternalId", bordered=True),
             mo.stat(len(data.result.errors), label="Fehler in ClubDesk", bordered=True),
+            mo.stat(len(data.result.excluded), label="Ausgeschlossen (Gäste)", bordered=True),
         ],
         justify="start",
     )
@@ -403,6 +404,10 @@ def _(build_table, data, get_selected_ids, mo, set_selected_ids):
 
     for _conflict in data.result.conflicts:
         _items.append(mo.callout(_conflict, kind="warn"))
+
+    # Ausschlussliste der efa-Gäste (RcbCompareTool data/efa_ausschluss.csv)
+    for _note in data.result.exclusion_notes:
+        _items.append(mo.callout(_note, kind="neutral"))
 
     # Fehler in ClubDesk (siehe RcbCompareTool docs/clubdesk-pruefung-plan.md):
     # werden nicht abgeglichen, also weder angelegt noch geändert noch ausgetreten

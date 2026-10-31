@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
 
+from rcbcomparetool.exclusion import EXCLUSION_FILE_NAME
+
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
@@ -23,6 +25,20 @@ LIBRARIES = {
     "rcbefaexport": ("RcbEfaExport", True),
     "rcbcomparetool": ("RcbCompareTool", False),
 }
+
+
+def exclusion_file(efa_file: Path) -> Path:
+    """
+    Ausschlussliste für efa-Gäste (siehe RcbCompareTool docs/ausschlussliste-plan.md).
+
+    Liegt bei RcbCompareTool unter data/. Zu den Demo-Daten gehört eine eigene
+    (fehlende, also leere) Liste – sonst wären alle echten Einträge „veraltet“.
+    """
+
+    if efa_file.resolve().parent == DEMO_DIR.resolve():
+        return DEMO_DIR / EXCLUSION_FILE_NAME
+
+    return project_dir("rcbcomparetool") / "data" / EXCLUSION_FILE_NAME
 
 
 @dataclass(frozen=True)
